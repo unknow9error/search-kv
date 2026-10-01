@@ -1,0 +1,10 @@
+[
+  {
+    "id": "bi-group",
+    "name": "BI Group",
+    "kind": "bi_group",
+    "base_url": "https://apigw.bi.group/sales-picker/microfe-v3",
+    "cities": ["Астана", "Алматы", "Шымкент", "Атырау", "Караганда"],
+    "enabled": true
+  }
+]

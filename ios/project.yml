@@ -1,0 +1,85 @@
+name: Meken
+options:
+  bundleIdPrefix: kz.meken
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+    SWIFT_APPROACHABLE_CONCURRENCY: NO
+    DEVELOPMENT_TEAM: ""
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    MEKEN_API_BASE_URL: https://api.meken.invalid
+  configs:
+    Debug:
+      MEKEN_API_BASE_URL: http://127.0.0.1:8001
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+    Release:
+      SWIFT_COMPILATION_MODE: wholemodule
+packages:
+  MekenCore:
+    path: MekenCore
+targets:
+  Meken:
+    type: application
+    platform: iOS
+    sources:
+      - path: Meken
+    dependencies:
+      - package: MekenCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: kz.meken.app
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: Meken/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: Meken
+        MekenAPIBaseURL: $(MEKEN_API_BASE_URL)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIApplicationSupportsIndirectInputEvents: true
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        ITSAppUsesNonExemptEncryption: false
+    preBuildScripts:
+      - name: Validate release endpoint
+        script: |
+          if [ "$CONFIGURATION" = "Release" ]; then
+            case "$MEKEN_API_BASE_URL" in
+              https://*.invalid*|*localhost*|*127.0.0.1*) echo "error: Configure a real HTTPS production API endpoint"; exit 1 ;;
+              https://*) ;;
+              *) echo "error: Release API must use HTTPS"; exit 1 ;;
+            esac
+          fi
+        basedOnDependencyAnalysis: false
+  MekenUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [MekenUITests]
+    dependencies:
+      - target: Meken
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: kz.meken.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Meken
+schemes:
+  Meken:
+    build:
+      targets:
+        Meken: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+    test:
+      targets: [MekenUITests]

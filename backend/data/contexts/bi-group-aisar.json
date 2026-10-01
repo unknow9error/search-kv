@@ -1,0 +1,26 @@
+{
+  "provider_id": "bi-group",
+  "scope_type": "complex",
+  "scope_id": "32453f14-664f-11ed-a82b-001dd8b726aa",
+  "source_url": "https://bi.group/ru/landing/aisar",
+  "observed_at": "2026-09-12T16:56:58.387593+00:00",
+  "expires_at": "2026-10-12T16:56:58.387593+00:00",
+  "facts": [
+    {
+      "kind": "school",
+      "name": "Две школы",
+      "state": "unknown",
+      "relation": "nearby",
+      "expected_opening": null,
+      "evidence": "2 школы рядом"
+    },
+    {
+      "kind": "kindergarten",
+      "name": "Детские сады",
+      "state": "unknown",
+      "relation": "unspecified",
+      "expected_opening": null,
+      "evidence": "«территории знаний», включающей школы, детские сады и развивающие зоны."
+    }
+  ]
+}

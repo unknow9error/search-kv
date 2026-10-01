@@ -1,0 +1,82 @@
+name: meken
+x-runtime: &runtime
+  MEKEN_ENV: ${MEKEN_ENV:-development}
+  MEKEN_DATABASE_URL: ${MEKEN_DATABASE_URL:-postgresql+asyncpg://meken:${POSTGRES_PASSWORD:?Generate .env with scripts/bootstrap-env.py}@db:5432/meken}
+  FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
+  MEKEN_REDIS_URL: redis://redis:6379/0
+  MEKEN_PROVIDER_CONFIG: ${MEKEN_PROVIDER_CONFIG:-data/providers.bi-group.json}
+  MEKEN_AUTO_CREATE_SCHEMA: "false"
+  MEKEN_AI_ENABLED: ${MEKEN_AI_ENABLED:-false}
+  MEKEN_OPENAI_API_KEY: ${MEKEN_OPENAI_API_KEY:-}
+  MEKEN_AI_MODEL: ${MEKEN_AI_MODEL:-gpt-4.1-mini}
+  MEKEN_METRICS_TOKEN: ${MEKEN_METRICS_TOKEN:?Set metrics token}
+  MEKEN_ALLOWED_HOSTS: ${MEKEN_ALLOWED_HOSTS:-["localhost","127.0.0.1"]}
+  MEKEN_PRIVACY_URL: ${MEKEN_PRIVACY_URL:-}
+  MEKEN_TERMS_URL: ${MEKEN_TERMS_URL:-}
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: meken
+      POSTGRES_USER: meken
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate .env}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U meken -d meken"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+  redis:
+    image: redis:7.4-alpine
+    command: [redis-server, --appendonly, "yes", --maxmemory, 256mb, --maxmemory-policy, noeviction]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+  migrate:
+    build: ./backend
+    image: meken-api:${MEKEN_IMAGE_TAG:-local}
+    environment:
+      <<: *runtime
+      MEKEN_DATABASE_URL: ${MEKEN_MIGRATION_DATABASE_URL:-postgresql+asyncpg://meken:${POSTGRES_PASSWORD:?Generate .env}@db:5432/meken}
+    command: [python, -m, app.migrate]
+    depends_on:
+      db: {condition: service_healthy}
+    restart: "no"
+  api:
+    build: ./backend
+    image: meken-api:${MEKEN_IMAGE_TAG:-local}
+    environment: *runtime
+    ports: ["127.0.0.1:${MEKEN_API_PORT:-8001}:8000"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+  worker:
+    build: ./backend
+    image: meken-api:${MEKEN_IMAGE_TAG:-local}
+    environment: *runtime
+    command: [python, -m, app.worker]
+    depends_on:
+      api: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  redis_data:

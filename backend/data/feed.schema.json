@@ -1,0 +1,453 @@
+{
+  "$defs": {
+    "Availability": {
+      "enum": [
+        "available",
+        "reserved",
+        "sold",
+        "unknown"
+      ],
+      "title": "Availability",
+      "type": "string"
+    },
+    "ListingInput": {
+      "additionalProperties": false,
+      "properties": {
+        "external_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "pattern": "^[\\w.\\-]+$",
+          "title": "External Id",
+          "type": "string"
+        },
+        "complex_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Complex Name",
+          "type": "string"
+        },
+        "complex_id": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Complex Id"
+        },
+        "bigville_id": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bigville Id"
+        },
+        "bigville_name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bigville Name"
+        },
+        "city": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "City",
+          "type": "string"
+        },
+        "district": {
+          "default": "",
+          "maxLength": 120,
+          "title": "District",
+          "type": "string"
+        },
+        "address": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Address",
+          "type": "string"
+        },
+        "rooms": {
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Rooms",
+          "type": "integer"
+        },
+        "area_m2": {
+          "maximum": 2000,
+          "minimum": 10,
+          "title": "Area M2",
+          "type": "number"
+        },
+        "floor": {
+          "maximum": 150,
+          "minimum": 1,
+          "title": "Floor",
+          "type": "integer"
+        },
+        "total_floors": {
+          "maximum": 150,
+          "minimum": 1,
+          "title": "Total Floors",
+          "type": "integer"
+        },
+        "price_kzt": {
+          "maximum": 10000000000,
+          "minimum": 1000000,
+          "title": "Price Kzt",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/Availability"
+        },
+        "latitude": {
+          "anyOf": [
+            {
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latitude"
+        },
+        "longitude": {
+          "anyOf": [
+            {
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Longitude"
+        },
+        "finish": {
+          "default": "Не указана",
+          "maxLength": 120,
+          "title": "Finish",
+          "type": "string"
+        },
+        "completion": {
+          "default": "Уточняется",
+          "maxLength": 100,
+          "title": "Completion",
+          "type": "string"
+        },
+        "source_url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Source Url",
+          "type": "string"
+        },
+        "image_url": {
+          "anyOf": [
+            {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Url"
+        },
+        "amenities": {
+          "items": {
+            "$ref": "#/$defs/POIInput"
+          },
+          "maxItems": 30,
+          "title": "Amenities",
+          "type": "array"
+        }
+      },
+      "required": [
+        "external_id",
+        "complex_name",
+        "city",
+        "address",
+        "rooms",
+        "area_m2",
+        "floor",
+        "total_floors",
+        "price_kzt",
+        "status",
+        "source_url"
+      ],
+      "title": "ListingInput",
+      "type": "object"
+    },
+    "POIInput": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "school",
+            "kindergarten",
+            "park",
+            "transit"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "state": {
+          "default": "unknown",
+          "enum": [
+            "operating",
+            "planned",
+            "under_construction",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "latitude": {
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Latitude",
+          "type": "number"
+        },
+        "longitude": {
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Longitude",
+          "type": "number"
+        },
+        "source_url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Source Url",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "latitude",
+        "longitude",
+        "source_url",
+        "observed_at"
+      ],
+      "title": "POIInput",
+      "type": "object"
+    },
+    "ProjectContextInput": {
+      "additionalProperties": false,
+      "properties": {
+        "provider_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Provider Id",
+          "type": "string"
+        },
+        "scope_type": {
+          "enum": [
+            "complex",
+            "bigville"
+          ],
+          "title": "Scope Type",
+          "type": "string"
+        },
+        "scope_id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Scope Id",
+          "type": "string"
+        },
+        "source_url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Source Url",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "title": "Observed At",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "facts": {
+          "items": {
+            "$ref": "#/$defs/ProjectFactInput"
+          },
+          "maxItems": 50,
+          "title": "Facts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "provider_id",
+        "scope_type",
+        "scope_id",
+        "source_url",
+        "observed_at",
+        "expires_at",
+        "facts"
+      ],
+      "title": "ProjectContextInput",
+      "type": "object"
+    },
+    "ProjectFactInput": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "school",
+            "kindergarten",
+            "park",
+            "transit"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "operating",
+            "planned",
+            "under_construction",
+            "unknown"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "relation": {
+          "default": "unspecified",
+          "enum": [
+            "within",
+            "nearby",
+            "unspecified"
+          ],
+          "title": "Relation",
+          "type": "string"
+        },
+        "expected_opening": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Opening"
+        },
+        "evidence": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Evidence",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "state",
+        "evidence"
+      ],
+      "title": "ProjectFactInput",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "as_of": {
+      "format": "date-time",
+      "title": "As Of",
+      "type": "string"
+    },
+    "complete": {
+      "title": "Complete",
+      "type": "boolean"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/ListingInput"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "allow_empty": {
+      "default": false,
+      "title": "Allow Empty",
+      "type": "boolean"
+    },
+    "scope_city": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scope City"
+    },
+    "project_contexts": {
+      "items": {
+        "$ref": "#/$defs/ProjectContextInput"
+      },
+      "maxItems": 500,
+      "title": "Project Contexts",
+      "type": "array"
+    }
+  },
+  "required": [
+    "as_of",
+    "complete",
+    "items"
+  ],
+  "title": "Snapshot",
+  "type": "object"
+}
