@@ -1,0 +1,37 @@
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+services:
+  db:
+    logging: *logging
+    environment:
+      POSTGRES_USER: meken_admin
+      MEKEN_APP_DB_PASSWORD: ${MEKEN_APP_DB_PASSWORD:?Set application DB password}
+      MEKEN_MIGRATOR_DB_PASSWORD: ${MEKEN_MIGRATOR_DB_PASSWORD:?Set migration DB password}
+    volumes:
+      - ./infra/postgres-init.sh:/docker-entrypoint-initdb.d/10-meken-roles.sh:ro
+    command: [postgres, -c, shared_buffers=64MB, -c, max_connections=40]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U meken_admin -d meken"]
+    mem_limit: 384m
+  redis:
+    logging: *logging
+    command: [redis-server, --appendonly, "yes", --maxmemory, 128mb, --maxmemory-policy, noeviction]
+    mem_limit: 192m
+  api:
+    logging: *logging
+    mem_limit: 384m
+  worker:
+    logging: *logging
+    mem_limit: 384m
+  migrate:
+    logging: *logging
+    mem_limit: 384m
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${MEKEN_DOCKER_SUBNET:-172.30.64.0/24}
+          gateway: ${MEKEN_DOCKER_GATEWAY:-172.30.64.1}

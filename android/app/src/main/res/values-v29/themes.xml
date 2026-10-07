@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.Meken" parent="Theme.Meken.Base">
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+</resources>

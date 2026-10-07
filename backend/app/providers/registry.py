@@ -10,6 +10,7 @@ from app.providers.base import ApartmentProvider
 from app.providers.bi_group import BIGroupProvider
 from app.providers.demo import DemoProvider
 from app.providers.json_feed import JsonFeedProvider, config_adapter
+from app.providers.public_project_feed import PublicProjectFeedProvider
 
 
 def build_providers(
@@ -25,6 +26,13 @@ def build_providers(
         if config.enabled:
             if config.kind == "bi_group":
                 providers.append(BIGroupProvider(client, coordination, config.cities))
+                continue
+            if config.kind == "public_project_feed":
+                providers.append(
+                    PublicProjectFeedProvider(
+                        config, client, settings.max_snapshot_items, settings.source_timeout_seconds
+                    )
+                )
                 continue
             if config.kind != "json_feed":
                 raise ValueError("Unknown provider kind: " + config.kind)

@@ -128,7 +128,19 @@ public struct AppConfig: Codable, Sendable {
     public let privacyUrl: String?
     public let termsUrl: String?
     public let retentionDays: Int
+    public let capabilities: [String]
     public var isDemo: Bool { mode == "demo" }
+    private enum CodingKeys: String, CodingKey { case mode, aiEnabled, cities, privacyUrl, termsUrl, retentionDays, capabilities }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        mode = try c.decode(String.self, forKey: .mode)
+        aiEnabled = try c.decode(Bool.self, forKey: .aiEnabled)
+        cities = try c.decode([String].self, forKey: .cities)
+        privacyUrl = try c.decodeIfPresent(String.self, forKey: .privacyUrl)
+        termsUrl = try c.decodeIfPresent(String.self, forKey: .termsUrl)
+        retentionDays = try c.decode(Int.self, forKey: .retentionDays)
+        capabilities = try c.decodeIfPresent([String].self, forKey: .capabilities) ?? []
+    }
 }
 
 public struct TokenPair: Codable, Sendable {
@@ -149,6 +161,19 @@ public struct ConversationHistory: Codable, Sendable {
     public let title: String
     public let preferences: Preferences
     public let turns: [HistoryTurn]
+    public let hasMore: Bool
+    public let nextBefore: String?
+
+    private enum CodingKeys: String, CodingKey { case id, title, preferences, turns, hasMore, nextBefore }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        preferences = try c.decode(Preferences.self, forKey: .preferences)
+        turns = try c.decode([HistoryTurn].self, forKey: .turns)
+        hasMore = try c.decodeIfPresent(Bool.self, forKey: .hasMore) ?? false
+        nextBefore = try c.decodeIfPresent(String.self, forKey: .nextBefore)
+    }
 }
 
 public struct HistoryTurn: Codable, Identifiable, Sendable {

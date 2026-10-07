@@ -6,18 +6,18 @@ struct ApartmentCard: View {
     var onOpen: () -> Void
     @Environment(AppStore.self) private var store
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             ZStack(alignment: .topTrailing) {
-                Button(action: onOpen) { ApartmentArtwork(apartment: apartment).frame(height: 195).clipped() }.buttonStyle(.plain)
+                Button(action: onOpen) { ApartmentArtwork(apartment: apartment).frame(height: 180).clipped() }.buttonStyle(.plain)
                 Button {
                     Task { await store.toggleFavorite(apartment) }
                 } label: {
                     Image(systemName: store.favorites.contains(where: { $0.id == apartment.id }) ? "heart.fill" : "heart")
                         .font(.system(size: 18, weight: .medium)).foregroundStyle(Theme.accent)
-                        .frame(width: 44, height: 44).background(.regularMaterial, in: .circle)
+                        .frame(width: 44, height: 44).background(Theme.paper, in: .circle)
                 }
                 .disabled(store.isMutatingFavorite.contains(apartment.id))
-                .padding(12)
+                .padding(10)
                 .accessibilityLabel(store.favorites.contains(where: { $0.id == apartment.id }) ? "Убрать из избранного" : "Сохранить квартиру")
             }
             Button(action: onOpen) {
@@ -40,9 +40,9 @@ struct ApartmentCard: View {
             }.padding(.horizontal, 18).padding(.bottom, 19).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityIdentifier("apartment-open-\(apartment.id)")
         }
-        .background(.background, in: .rect(cornerRadius: 24))
-        .clipShape(.rect(cornerRadius: 24))
-        .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(Theme.accent.opacity(0.08)))
+        .background(Theme.paper, in: .rect(cornerRadius: 12))
+        .clipShape(.rect(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.border))
         .accessibilityElement(children: .contain)
     }
 }

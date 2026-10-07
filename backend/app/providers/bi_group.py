@@ -15,6 +15,7 @@ import httpx
 
 from app.core.coordination import Coordination
 from app.domain.models import utcnow
+from app.domain.project_input import ProjectInput
 from app.domain.schemas import ListingInput, Preferences, Snapshot
 from app.providers.base import SourceError
 
@@ -32,6 +33,7 @@ STATUS_IDS = {FREE_STATUS: "available", "1a85b7a2-7adc-11e9-a831-00155d10652c": 
 
 class BIGroupProvider:
     id, name, demo = "bi-group", "BI Group", False
+    public_data = True
     origin = "https://apigw.bi.group/sales-picker/microfe-v3/"
 
     def __init__(self, client: httpx.AsyncClient, coordination: Coordination, cities=None):
@@ -75,24 +77,75 @@ class BIGroupProvider:
             return result, min(observed, utcnow())
 
     async def projects(self) -> dict:
-        key = "bi:projects:v2"
+        key = "bi:projects:v3"
         if cached := await self.coordination.get(key):
             return json.loads(cached)
-        payload, _ = await self.read(
+        payload, observed = await self.read(
             "realEstateList", {"pageNo": 1, "pageSize": 500, "propertyTypes": [APARTMENT_TYPE]}
         )
         projects = payload.get("realEstates")
-        if not isinstance(projects, list) or len(projects) >= 500:
+        if (
+            not isinstance(projects, list)
+            or len(projects) >= 500
+            or any(not isinstance(x, dict) or not isinstance(x.get("uuid"), str) for x in projects)
+            or len({x["uuid"] for x in projects}) != len(projects)
+        ):
             raise SourceError("project_schema_or_limit")
         result = {
             str(x["uuid"]): {
-                k: x.get(k)
-                for k in ["name", "cityUUID", "address", "latitude", "longitude", "website", "bigVille"]
+                **{
+                    k: x.get(k)
+                    for k in [
+                        "name", "cityUUID", "address", "latitude", "longitude", "website", "bigVille"
+                    ]
+                },
+                "_observed_at": observed.isoformat(),
             }
             for x in projects
         }
         await self.coordination.set(key, json.dumps(result), 3600)
         return result
+
+    def normalize_project(self, external_id: str, raw: dict, city: str | None = None):
+        """Only project-directory fields established by the public contract are published."""
+        actual_city = next(
+            (name for name, identifier in CITY_IDS.items() if identifier == raw.get("cityUUID")),
+            None,
+        )
+        if actual_city not in self.cities or (city and actual_city != city):
+            return None
+        lat, lon = raw.get("latitude"), raw.get("longitude")
+        if not (
+            isinstance(lat, (int, float))
+            and not isinstance(lat, bool)
+            and isinstance(lon, (int, float))
+            and not isinstance(lon, bool)
+            and 40 <= lat <= 56
+            and 46 <= lon <= 88
+        ):
+            lat, lon = None, None
+        website = raw.get("website")
+        website_scope = "project" if self._bi_url(website) else "provider_catalog"
+        if website_scope == "provider_catalog":
+            website = "https://bi.group/ru/filter/placements"
+        bigville = raw.get("bigVille") or {}
+        if not isinstance(bigville, dict):
+            bigville = {}
+        return ProjectInput(
+            external_id=external_id,
+            name=raw.get("name"),
+            city=actual_city,
+            address=raw.get("address") or None,
+            developer_name="BI Group",
+            bigville_id=bigville.get("id"),
+            bigville_name=bigville.get("name"),
+            latitude=lat,
+            longitude=lon,
+            source_url=self.origin + "realEstateList",
+            website_url=website,
+            website_scope=website_scope,
+            observed_at=raw["_observed_at"],
+        )
 
     def normalize(self, raw: dict, projects: dict, city: str | None = None) -> ListingInput | None:
         if (raw.get("propertyType") or {}).get("uuid", raw.get("propertyTypeId")) != APARTMENT_TYPE:
@@ -172,6 +225,20 @@ class BIGroupProvider:
                 continue
             cursor_key = "bi:scan:" + current_city
             start_page = 1 if preferences else int(await self.coordination.get(cursor_key) or 1)
+            directory = [
+                project
+                for identifier, raw in projects.items()
+                if (project := self.normalize_project(identifier, raw, current_city)) is not None
+            ]
+            if directory:
+                # Persist the public directory even when the separate lot source fails.
+                yield Snapshot(
+                    as_of=max(project.observed_at for project in directory),
+                    complete=False,
+                    items=[],
+                    scope_city=current_city,
+                    projects=directory,
+                )
             for page in range(start_page, start_page + (3 if preferences else 8)):
                 query = {
                     "pageNo": page,
@@ -200,7 +267,12 @@ class BIGroupProvider:
                     if normalized:
                         items.append(normalized)
                 # Pagination is not a stable snapshot: never infer sold/absent from these pages.
-                yield Snapshot(as_of=observed, complete=False, items=items, scope_city=current_city)
+                yield Snapshot(
+                    as_of=observed,
+                    complete=False,
+                    items=items,
+                    scope_city=current_city,
+                )
                 if not preferences:
                     await self.coordination.set(
                         cursor_key, str(page + 1 if len(rows) == 150 else 1), 86400
@@ -210,8 +282,13 @@ class BIGroupProvider:
                 await asyncio.sleep(0.15)
 
     async def fetch(self, city=None):
+        directory = []
         async for snapshot in self.fetch_pages(city, Preferences(city=city)):
-            return snapshot
+            if snapshot.projects and not snapshot.items:
+                directory.extend(snapshot.projects)
+                continue
+            # Retain the original fetch interface: the first lot page, with directory metadata.
+            return snapshot.model_copy(update={"projects": directory})
         return Snapshot(as_of=utcnow(), complete=False, items=[])
 
     async def verify(self, external_id: str):

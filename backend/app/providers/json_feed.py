@@ -52,6 +52,7 @@ class JsonFeedProvider:
     def __init__(self, config: FeedConfig, client: httpx.AsyncClient, max_items: int):
         self.config = config
         self.id, self.name, self.cities = config.id, config.name, config.cities
+        self.public_data = config.token_env is None
         self.client, self.max_items = client, max_items
         self.headers = {}
         if config.token_env:

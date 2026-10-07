@@ -5,8 +5,13 @@ struct SearchView: View {
     @Environment(AppStore.self) private var store
     @State private var draft = ""
     @State private var showingFilters = false
+    @State private var showingConversation = false
+    @State private var searchCity = ""
+    @State private var formError: String?
     @State private var showingHistory = false
+    @State private var showingHelp = false
     @State private var selectedApartment: Apartment?
+    @State private var olderMessagesAnchor: UUID?
     @FocusState private var composerFocused: Bool
 
     var body: some View {
@@ -15,8 +20,23 @@ struct SearchView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 22) {
                         if store.config?.isDemo == true {
-                            NoticeCard(text: "Демонстрационный каталог. Эти квартиры показывают, как работает подбор, и не продаются.", symbol: "sparkles.rectangle.stack")
+                            NoticeCard(text: "Демо-каталог. Квартиры не продаются.", symbol: "sparkles.rectangle.stack")
                         }
+                        if store.hasOlderMessages {
+                            Button {
+                                olderMessagesAnchor = store.search.messages.first?.id
+                                Task {
+                                    await store.loadOlderMessages()
+                                    if store.historyLoadError != nil { olderMessagesAnchor = nil }
+                                }
+                            } label: {
+                                HStack {
+                                    if store.isLoadingOlderMessages { ProgressView() }
+                                    Text(store.isLoadingOlderMessages ? "Загружаю сообщения" : "Показать предыдущие сообщения")
+                                }.font(.subheadline.weight(.medium))
+                            }.disabled(store.isLoadingOlderMessages || store.isPreparingSearch || store.search.isStreaming || store.requiresSessionReset || store.isDeleting)
+                        }
+                        if let error = store.historyLoadError { NoticeCard(text: error, symbol: "wifi.exclamationmark") }
                         if store.search.messages.isEmpty { welcome }
                         if let notice = store.search.notice { NoticeCard(text: notice) }
                         ForEach(store.search.messages) { message in MessageView(message: message).id(message.id) }
@@ -34,7 +54,7 @@ struct SearchView: View {
                         if let error = store.search.error {
                             VStack(alignment: .leading, spacing: 10) {
                                 NoticeCard(text: error, symbol: "wifi.exclamationmark")
-                                if store.search.turnID != nil {
+                                if store.search.turnID != nil || store.pendingRequest != nil || store.pendingConversation != nil {
                                     Button("Проверить сохранённый ответ") { Task { await store.resume() } }
                                         .font(.subheadline.weight(.medium)).tint(Theme.accent)
                                 }
@@ -54,25 +74,42 @@ struct SearchView: View {
                     .padding(.horizontal, 22).padding(.top, 10).padding(.bottom, 20)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .onChange(of: store.search.messages.count) {
+                .onChange(of: store.search.messages.last?.id) {
                     if let message = store.search.messages.last, message.isUser { proxy.scrollTo(message.id, anchor: .top) }
                 }
-                .safeAreaInset(edge: .bottom, spacing: 0) { composer }
+                .onChange(of: store.search.messages.first?.id) {
+                    if let anchor = olderMessagesAnchor, store.search.messages.contains(where: { $0.id == anchor }) {
+                        proxy.scrollTo(anchor, anchor: .top)
+                    }
+                    olderMessagesAnchor = nil
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if showingConversation || !store.search.messages.isEmpty { composer }
+                }
             }
             .background(Theme.paper)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    HStack(spacing: 9) { BrandMark(); Text("meken").font(.system(.title2, design: .rounded, weight: .bold)).foregroundStyle(Theme.ink) }.fixedSize()
-                }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button("История", systemImage: "clock.arrow.circlepath") {
+            .toolbarBackground(Theme.paper, for: .navigationBar)
+            .toolbarVisibility(.hidden, for: .navigationBar)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack(spacing: 12) {
+                    BrandWordmark().fixedSize()
+                    Spacer(minLength: 8)
+                    Button {
                         Task { await store.refreshHistory(); showingHistory = true }
-                    }
-                    Button("Новый подбор", systemImage: "square.and.pencil") { store.newConversation() }
-                }
+                    } label: { Label("История", systemImage: "clock.arrow.circlepath").font(.caption).foregroundStyle(Theme.muted) }
+                    .buttonStyle(.plain).frame(minHeight: 44)
+                    Button("Новый подбор", systemImage: "square.and.pencil") { store.newConversation(); showingConversation = false }
+                        .labelStyle(.iconOnly).buttonStyle(.plain).frame(width: 44, height: 44).foregroundStyle(Theme.accent)
+                }.padding(.horizontal, 22).padding(.vertical, 3).background(Theme.paper)
             }
-            .sheet(isPresented: $showingFilters) { FiltersView() }
+            .onAppear { syncCity() }
+            .onChange(of: store.config?.cities) { syncCity() }
+            .onChange(of: store.search.preferences.city) { syncCity(force: true) }
+            .sheet(isPresented: $showingFilters) { FiltersView(initialCity: searchCity.isEmpty ? nil : searchCity) }
             .sheet(isPresented: $showingHistory) { HistoryView() }
+            .sheet(isPresented: $showingHelp) {
+                NavigationStack { HelpView().toolbar { ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { showingHelp = false } } } }
+            }
             .sheet(item: $selectedApartment) { ApartmentDetailView(initialApartment: $0) }
             .alert("Не удалось изменить избранное", isPresented: Binding(get: { store.favoriteError != nil && !store.favoritesOffline }, set: { if !$0 { store.favoriteError = nil } })) {
                 Button("Понятно") { store.favoriteError = nil }
@@ -80,34 +117,86 @@ struct SearchView: View {
         }
     }
 
+    private var searchBusy: Bool {
+        store.search.isStreaming || store.search.isPending || store.isPreparingSearch || store.requiresSessionReset || store.isDeleting || store.pendingRequest != nil || store.pendingConversation != nil
+    }
+
+    private func syncCity(force: Bool = false) {
+        guard force || searchCity.isEmpty || store.config?.cities.contains(searchCity) != true else { return }
+        searchCity = store.search.preferences.city ?? (store.config?.cities.contains("Астана") == true ? "Астана" : store.config?.cities.first ?? "")
+    }
+
     private var welcome: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            HStack {
-                Label("ВАШ СЛЕДУЮЩИЙ АДРЕС", systemImage: "location.north.circle")
-                    .font(.system(.caption2, design: .monospaced, weight: .medium)).tracking(1.2).foregroundStyle(Theme.accent)
-                Spacer()
-            }.padding(.top, 18)
-            Text("Найдём место,\nкоторое станет\nвашим.")
-                .font(.system(.largeTitle, design: .serif, weight: .medium)).foregroundStyle(Theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Не нужно разбираться во всём сразу. Расскажите, как вы хотите жить — начнём с простого.")
-                .font(.subheadline).foregroundStyle(.secondary).lineSpacing(4)
-            HouseIllustration().frame(height: 180).padding(.top, -5)
-            VStack(alignment: .leading, spacing: 10) {
-                Text("С ЧЕГО НАЧНЁМ?").font(.system(.caption2, design: .monospaced)).tracking(1.5).foregroundStyle(.secondary)
-                Button { store.send("Хочу квартиру") } label: {
-                    HStack { Image(systemName: "sparkles"); Text("Просто хочу квартиру"); Spacer(); Image(systemName: "arrow.up.right") }
-                }.buttonStyle(PrimaryButtonStyle())
-                HStack(spacing: 10) {
-                    suggestionButton("Астана до 35 млн ₸")
-                    suggestionButton("Нужна школа рядом")
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Поиск квартир").font(.system(.title, weight: .bold)).foregroundStyle(Theme.ink).padding(.bottom, 6)
+            Menu {
+                ForEach(store.config?.cities ?? [], id: \.self) { city in
+                    Button(city) { searchCity = city }
                 }
+            } label: {
+                SearchFieldRow(title: "", value: searchCity.isEmpty ? "Выберите город" : searchCity, symbol: "mappin.and.ellipse")
+            }.disabled(searchBusy)
+            Button { showingFilters = true } label: {
+                SearchFieldRow(title: "Бюджет квартиры", value: budgetLabel, symbol: "banknote")
+            }.buttonStyle(.plain).disabled(searchBusy)
+            Button { showingFilters = true } label: {
+                SearchFieldRow(title: "Комнаты", value: store.search.preferences.rooms.isEmpty ? "Любое количество" : store.search.preferences.rooms.sorted().map(String.init).joined(separator: ", "), symbol: "square.split.2x2")
+            }.buttonStyle(.plain).disabled(searchBusy)
+            HStack(spacing: 8) {
+                suggestionButton("Астана до 35 млн ₸")
+                Button { showingConversation = true; draft = searchCity.isEmpty ? "Нужна школа рядом" : "Ищу квартиру. Город: \(searchCity). Нужна школа рядом"; composerFocused = true } label: {
+                    Label("Школа рядом", systemImage: "graduationcap").font(.caption).padding(12)
+                        .foregroundStyle(Theme.ink).background(Theme.secondary, in: .rect(cornerRadius: 8))
+                }.buttonStyle(.plain).disabled(searchBusy)
             }
-            HStack(spacing: 7) {
-                Image(systemName: "building.2.crop.circle")
-                Text(store.config?.isDemo == true ? "Попробуйте поиск на примерах" : "Предложения напрямую из каталога застройщика")
-            }.font(.caption).foregroundStyle(.secondary)
+            Button { showingFilters = true } label: {
+                SearchFieldRow(title: "", value: "Все фильтры", symbol: "slider.horizontal.3")
+            }.buttonStyle(.plain).disabled(searchBusy)
+            Button {
+                var preferences = store.search.preferences
+                preferences.city = searchCity.isEmpty ? nil : searchCity
+                formError = nil
+                Task {
+                    do { try await store.applyFilters(preferences) }
+                    catch is CancellationError {}
+                    catch { formError = store.friendly(error) }
+                }
+            } label: {
+                Label("Найти квартиры", systemImage: "magnifyingglass")
+            }.buttonStyle(PrimaryButtonStyle()).disabled(searchBusy || searchCity.isEmpty)
+            if let formError { NoticeCard(text: formError) }
+            Button { showingConversation = true; draft = searchCity.isEmpty ? "" : "Ищу квартиру. Город: \(searchCity). "; composerFocused = true } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Уточнить в разговоре").font(.subheadline.weight(.medium))
+                        Text("Опишите, что важно для вас").font(.caption).foregroundStyle(Theme.muted)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption)
+                }.foregroundStyle(Theme.ink).padding(14).background(Theme.sage, in: .rect(cornerRadius: 10))
+            }.buttonStyle(.plain).disabled(searchBusy).padding(.top, 6)
+            if let recent = store.conversations.first {
+                Text("Последний поиск").font(.caption).foregroundStyle(Theme.muted).padding(.top, 12)
+                Button {
+                    Task {
+                        do { try await store.restoreConversation(recent.id) }
+                        catch is CancellationError {}
+                        catch { formError = store.friendly(error) }
+                    }
+                } label: { SearchFieldRow(title: "", value: recent.title, symbol: "clock.arrow.circlepath") }
+                .buttonStyle(.plain).disabled(searchBusy)
+            }
+            Button { showingHelp = true } label: {
+                HStack(spacing: 8) { Image(systemName: "info.circle"); Text("О каталоге и источниках"); Spacer(); Image(systemName: "chevron.right") }
+                    .font(.caption).foregroundStyle(Theme.muted).frame(minHeight: 44)
+            }.buttonStyle(.plain).padding(.top, 8)
         }
+    }
+
+    private var budgetLabel: String {
+        guard let budget = store.search.preferences.budgetMax else { return "Без ограничений" }
+        return "До \((Double(budget) / 1_000_000).formatted(.number.precision(.fractionLength(0...2)))) млн ₸"
     }
 
     private var results: some View {
@@ -143,8 +232,8 @@ struct SearchView: View {
     private func suggestionButton(_ text: String) -> some View {
         Button { store.send(text) } label: {
             Text(text).font(.footnote.weight(.medium)).padding(.horizontal, 14).padding(.vertical, 12)
-                .foregroundStyle(Theme.ink).background(Theme.secondary, in: .rect(cornerRadius: 14))
-        }.disabled(store.search.isStreaming)
+                .foregroundStyle(Theme.ink).background(Theme.secondary, in: .rect(cornerRadius: 8))
+        }.disabled(store.search.isStreaming || store.isPreparingSearch || store.pendingRequest != nil || store.pendingConversation != nil)
     }
 
     private var composer: some View {
@@ -165,7 +254,7 @@ struct SearchView: View {
                     let message = draft; draft = ""; composerFocused = false; store.send(message)
                 } label: { Image(systemName: "arrow.up").font(.system(size: 19, weight: .semibold)).frame(width: 46, height: 46) }
                     .foregroundStyle(.white).background(Theme.accent, in: .circle)
-                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draft.unicodeScalars.count > 2000)
+                    .disabled(store.isPreparingSearch || store.requiresSessionReset || store.isDeleting || store.search.isPending || store.pendingRequest != nil || store.pendingConversation != nil || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draft.unicodeScalars.count > 2000)
                     .opacity(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1)
                     .accessibilityLabel("Отправить сообщение")
             }
@@ -192,9 +281,9 @@ struct MessageView: View {
                     }
                 }
             }
-            .padding(message.isUser ? 15 : 0)
-            .foregroundStyle(message.isUser ? .white : Theme.ink)
-            .background(message.isUser ? Theme.accent : .clear, in: .rect(cornerRadius: 20))
+            .padding(14)
+            .foregroundStyle(Theme.ink)
+            .background(message.isUser ? Theme.sage : Theme.secondary, in: .rect(cornerRadius: 12))
             if !message.isUser { Spacer(minLength: 8) }
         }
         .accessibilityElement(children: .contain)
@@ -204,12 +293,15 @@ struct MessageView: View {
 struct HistoryView: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @State private var deletingConversation: ConversationSummary?
+    @State private var deleteError: String?
     var body: some View {
         NavigationStack {
             List(store.conversations) { conversation in
                 Button {
                     Task {
                         do { try await store.restoreConversation(conversation.id); dismiss() }
+                        catch is CancellationError {}
                         catch { store.search.error = store.friendly(error); dismiss() }
                     }
                 } label: {
@@ -218,10 +310,30 @@ struct HistoryView: View {
                         Text(conversation.preferences.city ?? "Город ещё не выбран").font(.caption).foregroundStyle(.secondary)
                     }.padding(.vertical, 6)
                 }
+                .swipeActions {
+                    Button("Удалить", role: .destructive) { deletingConversation = conversation }
+                }
             }
             .overlay { if store.conversations.isEmpty { EmptyState(symbol: "bubble.left.and.bubble.right", title: "Здесь будут ваши подборки", detail: "Начните разговор о квартире — он сохранится автоматически.") } }
+            .scrollContentBackground(.hidden).background(Theme.paper)
             .navigationTitle("История").navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Theme.paper, for: .navigationBar)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { dismiss() } } }
+            .confirmationDialog("Удалить подборку?", isPresented: Binding(get: { deletingConversation != nil }, set: { if !$0 { deletingConversation = nil } }), titleVisibility: .visible) {
+                if let conversation = deletingConversation {
+                    Button("Удалить подборку", role: .destructive) {
+                        Task {
+                            do { try await store.deleteConversation(conversation.id) }
+                            catch is CancellationError {}
+                            catch { deleteError = store.friendly(error) }
+                        }
+                    }
+                }
+                Button("Отмена", role: .cancel) { deletingConversation = nil }
+            } message: { Text("Диалог и его пожелания будут удалены с сервера. Избранные квартиры сохранятся.") }
+            .alert("Не удалось удалить подборку", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+                Button("Понятно") { deleteError = nil }
+            } message: { Text(deleteError ?? "") }
         }
     }
 }

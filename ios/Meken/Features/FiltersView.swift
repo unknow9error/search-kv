@@ -2,6 +2,7 @@ import SwiftUI
 import MekenCore
 
 struct FiltersView: View {
+    var initialCity: String? = nil
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var preferences = Preferences()
@@ -23,12 +24,21 @@ struct FiltersView: View {
                         .accessibilityLabel("Максимальная стоимость в миллионах тенге")
                 } header: { Text("Общий бюджет, млн ₸") } footer: { Text("Полная стоимость квартиры. Оставьте пустым, если пока не определились.") }
                 Section("Количество комнат") {
-                    ForEach(1...5, id: \.self) { count in
-                        Toggle("\(count) комн.", isOn: Binding(get: { preferences.rooms.contains(count) }, set: { enabled in
-                            if enabled { preferences.rooms.append(count) }
-                            else { preferences.rooms.removeAll { $0 == count } }
-                        }))
-                    }
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 8) {
+                            ForEach(1...5, id: \.self) { count in
+                                Button {
+                                    if preferences.rooms.contains(count) { preferences.rooms.removeAll { $0 == count } }
+                                    else { preferences.rooms.append(count) }
+                                } label: {
+                                    Text("\(count)").font(.subheadline.weight(.medium)).frame(minWidth: 44, minHeight: 44)
+                                        .foregroundStyle(preferences.rooms.contains(count) ? .white : Theme.ink)
+                                        .background(preferences.rooms.contains(count) ? Theme.accent : Theme.secondary, in: .rect(cornerRadius: 8))
+                                }.buttonStyle(.plain).accessibilityLabel("\(count) комнат")
+                                .accessibilityAddTraits(preferences.rooms.contains(count) ? .isSelected : [])
+                            }
+                        }
+                    }.scrollIndicators(.hidden)
                 }
                 Section {
                     ForEach(amenities, id: \.0) { kind, title in
@@ -55,31 +65,42 @@ struct FiltersView: View {
                     }
                 } header: { Text("Что должно быть рядом") } footer: { Text("Для поиска рядом используются расстояния по прямой; для ЖК и бигвилля — сведения застройщика. «Обязательно» требует подтверждения действующего объекта. Запланированная школа не считается работающей.") }
                 if let error { Section { Text(error).foregroundStyle(.red) } }
-                Section {
-                    Button {
-                        let value = budget.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
-                        if !value.isEmpty {
-                            guard let millions = Double(value), millions.isFinite, millions >= 1, millions <= 10000 else { error = "Укажите бюджет от 1 до 10 000 млн ₸."; return }
-                            preferences.budgetMax = Int((millions * 1_000_000).rounded())
-                        } else { preferences.budgetMax = nil }
-                        isSaving = true
-                        Task {
-                            do { try await store.applyFilters(preferences); dismiss() }
-                            catch { self.error = store.friendly(error) }
-                            isSaving = false
-                        }
-                    } label: { HStack { Text("Показать квартиры"); if isSaving { Spacer(); ProgressView() } } }
-                    .disabled(isSaving || store.search.isStreaming)
-                    Button("Сбросить фильтры", role: .destructive) { preferences = Preferences(); budget = "" }
-                }
+
             }
-            .navigationTitle("Ваши пожелания").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { dismiss() } } }
+            .scrollContentBackground(.hidden).background(Theme.paper)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Button(action: apply) {
+                    HStack { Text("Показать квартиры"); if isSaving { ProgressView().tint(.white) } }
+                }.buttonStyle(PrimaryButtonStyle())
+                .disabled(isSaving || store.isPreparingSearch || store.search.isStreaming || store.search.isPending || store.pendingRequest != nil || store.pendingConversation != nil || store.requiresSessionReset || store.isDeleting)
+                .padding(16).background(Theme.paper)
+            }
+            .navigationTitle("Фильтры").navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Theme.paper, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Закрыть") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Сбросить") { preferences = Preferences(); budget = ""; error = nil } }
+            }
             .onAppear {
                 preferences = store.search.preferences
+                if let initialCity { preferences.city = initialCity }
                 budget = preferences.budgetMax.map { String(Double($0) / 1_000_000) } ?? ""
             }
         }.tint(Theme.accent)
     }
-}
 
+    private func apply() {
+        let value = budget.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        if !value.isEmpty {
+            guard let millions = Double(value), millions.isFinite, millions >= 1, millions <= 10000 else { error = "Укажите бюджет от 1 до 10 000 млн ₸."; return }
+            preferences.budgetMax = Int((millions * 1_000_000).rounded())
+        } else { preferences.budgetMax = nil }
+        isSaving = true
+        Task {
+            do { try await store.applyFilters(preferences); dismiss() }
+            catch is CancellationError {}
+            catch { self.error = store.friendly(error) }
+            isSaving = false
+        }
+    }
+}

@@ -64,17 +64,44 @@ class Chat:
         if lease is None:
             raise HTTPException(409, "turn_in_progress")
         try:
+            # A deletion may have completed between the initial ownership read and acquire.
+            await self.conversation(conversation_id, user_id)
             turn_id = new_id()
             async with self.db.sessions.begin() as db:
-                db.add(
-                    Turn(
-                        id=turn_id,
-                        conversation_id=conversation_id,
-                        client_turn_id=str(body.client_turn_id),
-                        message=body.message,
-                        request_hash=request_hash,
+                # Another request may have finished after our preflight read and released its
+                # lease before this acquire. Recheck under the lease rather than failing the
+                # unique constraint (or accepting a request beyond the per-conversation limit).
+                existing = await db.scalar(
+                    select(Turn).where(
+                        Turn.conversation_id == conversation_id,
+                        Turn.client_turn_id == str(body.client_turn_id),
                     )
                 )
+                if existing:
+                    if existing.message != body.message or (
+                        existing.request_hash and existing.request_hash != request_hash
+                    ):
+                        raise HTTPException(409, "idempotency_conflict")
+                else:
+                    count = await db.scalar(
+                        select(func.count())
+                        .select_from(Turn)
+                        .where(Turn.conversation_id == conversation_id)
+                    )
+                    if count >= 200:
+                        raise HTTPException(409, "conversation_limit")
+                    db.add(
+                        Turn(
+                            id=turn_id,
+                            conversation_id=conversation_id,
+                            client_turn_id=str(body.client_turn_id),
+                            message=body.message,
+                            request_hash=request_hash,
+                        )
+                    )
+            if existing:
+                await self.coordination.release(key, lease)
+                return existing.id, None
             return turn_id, lease
         except Exception:
             await self.coordination.release(key, lease)

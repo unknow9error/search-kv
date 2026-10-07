@@ -23,3 +23,11 @@ providers.local.json
 backups/
 *.dump
 *.egg-info/
+.gradle/
+.gradle-local/
+local.properties
+*.jks
+*.keystore
+.kotlin/
+/android/signing/
+/.frontend-workbench/

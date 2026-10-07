@@ -1,3 +1,4 @@
+import asyncio
 import json
 from uuid import uuid4
 
@@ -87,6 +88,25 @@ async def test_refresh_rotates_and_old_access_is_rejected(client):
             "/v1/me", headers={"Authorization": "Bearer " + refreshed.json()["access_token"]}
         )
     ).status_code == 200
+
+
+async def test_parallel_refresh_consumes_token_only_once(client):
+    tokens = (await client.post("/v1/auth/anonymous")).json()
+    results = await asyncio.gather(
+        *(
+            client.post("/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+            for _ in range(2)
+        )
+    )
+    assert sorted(result.status_code for result in results) == [200, 401]
+    successful = next(result.json() for result in results if result.status_code == 200)
+    assert successful["user_id"] == tokens["user_id"]
+    assert (
+        await client.get("/v1/me", headers={"Authorization": "Bearer " + successful["access_token"]})
+    ).status_code == 200
+    assert (
+        await client.get("/v1/me", headers={"Authorization": "Bearer " + tokens["access_token"]})
+    ).status_code == 401
 
 
 async def test_delete_data_revokes_token_and_cascades(client, app, seeded):

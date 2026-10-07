@@ -1,0 +1,9 @@
+[Unit]
+Description=Renew Meken HTTPS certificate
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/meken-certbot/bin/certbot renew --quiet --non-interactive --no-random-sleep-on-renew
+PrivateTmp=true

@@ -7,15 +7,20 @@ from sqlalchemy import delete, exists, select, update
 
 from app.core.coordination import BusyError
 from app.domain.models import Conversation, ImportRun, Session, Turn, User, utcnow
+from app.domain.project_models import DataReportRecord, ProjectConversationRecord
+from app.domain.recovery import RecoveryCredential
 from app.main import create_app
 
 
 async def retention(db, days):
     async with db.sessions.begin() as session:
+        cutoff = utcnow() - timedelta(days=days)
         await session.execute(delete(Session).where(Session.refresh_expires_at < utcnow()))
+        await session.execute(delete(Conversation).where(Conversation.updated_at < cutoff))
         await session.execute(
-            delete(Conversation).where(Conversation.updated_at < utcnow() - timedelta(days=days))
+            delete(ProjectConversationRecord).where(ProjectConversationRecord.updated_at < cutoff)
         )
+        await session.execute(delete(DataReportRecord).where(DataReportRecord.created_at < cutoff))
         await session.execute(
             delete(ImportRun).where(ImportRun.started_at < utcnow() - timedelta(days=30))
         )
@@ -24,12 +29,24 @@ async def retention(db, days):
             .where(Turn.status == "running", Turn.created_at < utcnow() - timedelta(seconds=180))
             .values(status="interrupted")
         )
-        await session.execute(
-            delete(User).where(
-                User.created_at < utcnow() - timedelta(days=days),
-                ~exists(select(Session.id).where(Session.user_id == User.id)),
-            )
+        expired_user = (
+            User.created_at < cutoff,
+            ~exists(select(Session.id).where(Session.user_id == User.id)),
+            ~exists(
+                select(RecoveryCredential.user_id).where(
+                    RecoveryCredential.user_id == User.id,
+                    RecoveryCredential.updated_at >= cutoff,
+                )
+            ),
         )
+        # Recovery, rotation and refresh lock the user first. Skip accounts being
+        # used, then recheck eligibility under the lock with a fresh statement so
+        # a stale snapshot cannot purge a newly recovered account.
+        candidates = (
+            await session.scalars(select(User.id).where(*expired_user).with_for_update(skip_locked=True))
+        ).all()
+        if candidates:
+            await session.execute(delete(User).where(User.id.in_(candidates), *expired_user))
 
 
 async def run(once=False):

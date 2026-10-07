@@ -1,0 +1,25 @@
+[Unit]
+Description=Meken encrypted PostgreSQL backup and isolated restore check
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/meken/current
+EnvironmentFile=/opt/meken/shared/backup.env
+Environment=AWS_PAGER=
+Environment=AWS_EC2_METADATA_DISABLED=true
+ExecStart=/usr/bin/python3 /opt/meken/current/scripts/meken-backup.py
+UMask=0077
+TimeoutStartSec=3h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/meken/backups
+

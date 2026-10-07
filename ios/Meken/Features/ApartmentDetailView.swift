@@ -14,9 +14,9 @@ struct ApartmentDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    ApartmentArtwork(apartment: apartment).frame(height: 280).clipShape(.rect(cornerRadius: 24))
+                    ApartmentArtwork(apartment: apartment).frame(height: 280).clipShape(.rect(cornerRadius: 12))
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(apartment.complexName).font(.system(.title, design: .serif, weight: .medium))
+                        Text(apartment.complexName).font(.system(.title, weight: .bold))
                         Text(apartment.priceLabel).font(.title2.weight(.semibold))
                         Text("\(apartment.rooms)-комнатная · \(apartment.areaLabel) · \(apartment.floor) из \(apartment.totalFloors) этажей").font(.subheadline)
                         Label(apartment.address, systemImage: "mappin.and.ellipse").font(.footnote).foregroundStyle(.secondary)
@@ -34,7 +34,7 @@ struct ApartmentDetailView: View {
                         ForEach(apartment.reasons, id: \.self) { reason in Label(reason, systemImage: "checkmark.circle.fill").foregroundStyle(Theme.accent).font(.subheadline) }
                         ForEach(apartment.tradeoffs, id: \.self) { reason in Label(reason, systemImage: "info.circle").foregroundStyle(.secondary).font(.subheadline) }
                         Button("Обсудить эту квартиру", systemImage: "bubble.left.and.bubble.right") { dismiss(); store.explain(apartment) }
-                            .font(.subheadline.weight(.semibold)).padding(.top, 4).disabled(store.search.isStreaming)
+                            .font(.subheadline.weight(.semibold)).padding(.top, 4).disabled(store.search.isStreaming || store.isPreparingSearch || store.pendingRequest != nil || store.pendingConversation != nil)
                     }
                     Divider()
                     VStack(spacing: 14) {
@@ -57,7 +57,7 @@ struct ApartmentDetailView: View {
                                 if let opening = fact.expectedOpening { Text("Заявленный срок: \(opening)").font(.caption) }
                                 Text(fact.evidence).font(.footnote).foregroundStyle(.secondary)
                                 if let url = Apartment.httpsURL(fact.sourceUrl) { Link("Источник застройщика", destination: url).font(.caption) }
-                            }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(Theme.secondary, in: .rect(cornerRadius: 16))
+                            }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(Theme.secondary, in: .rect(cornerRadius: 10))
                         }
                     }
                     if let lat = apartment.latitude, let lon = apartment.longitude {
@@ -127,4 +127,3 @@ struct ApartmentDetailView: View {
         }.font(.subheadline)
     }
 }
-

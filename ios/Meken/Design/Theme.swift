@@ -5,7 +5,36 @@ enum Theme {
     static let paper = Color("Paper")
     static let accent = Color("AccentColor")
     static let secondary = Color("SecondarySurface")
+    static let muted = Color(red: 0.38, green: 0.44, blue: 0.41)
+    static let border = Color(red: 0.88, green: 0.91, blue: 0.89)
+    static let sage = Color(red: 0.91, green: 0.94, blue: 0.91)
     static let coral = Color(red: 0.80, green: 0.36, blue: 0.23)
+}
+
+struct BrandWordmark: View {
+    var body: some View {
+        Text("meken").font(.system(.title2, weight: .bold)).tracking(-1.2).foregroundStyle(Theme.ink)
+    }
+}
+
+struct SearchFieldRow: View {
+    let title: String
+    let value: String
+    let symbol: String
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol).foregroundStyle(Theme.accent).frame(width: 22)
+            VStack(alignment: .leading, spacing: 3) {
+                if !title.isEmpty { Text(title).font(.caption).foregroundStyle(Theme.muted) }
+                Text(value).font(.subheadline).foregroundStyle(Theme.ink)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.muted)
+        }
+        .padding(14).frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+        .background(Theme.secondary, in: .rect(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
+    }
 }
 
 struct BrandMark: View {
@@ -20,10 +49,23 @@ struct BrandMark: View {
     }
 }
 
+struct SurfaceGroup<Content: View>: View {
+    var title: String? = nil
+    @ViewBuilder var content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if let title { Text(title).font(.subheadline.weight(.semibold)) }
+            content
+        }
+        .foregroundStyle(Theme.ink).padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.secondary, in: .rect(cornerRadius: 12))
+    }
+}
+
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.headline).padding(.horizontal, 20).frame(maxWidth: .infinity).padding(.vertical, 17)
-            .foregroundStyle(.white).background(Theme.accent.opacity(configuration.isPressed ? 0.8 : 1), in: .rect(cornerRadius: 20))
+        configuration.label.font(.subheadline.weight(.semibold)).padding(.horizontal, 18).frame(maxWidth: .infinity, minHeight: 48)
+            .foregroundStyle(.white).background(Theme.accent.opacity(configuration.isPressed ? 0.8 : 1), in: .rect(cornerRadius: 8))
     }
 }
 
@@ -33,7 +75,7 @@ struct NoticeCard: View {
     var body: some View {
         Label(text, systemImage: symbol).font(.footnote).foregroundStyle(Theme.ink)
             .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.secondary, in: .rect(cornerRadius: 16))
+            .background(Theme.sage, in: .rect(cornerRadius: 10))
             .accessibilityElement(children: .combine)
     }
 }
@@ -83,4 +125,3 @@ struct HouseIllustration: View {
         .background(color, in: UnevenRoundedRectangle(topLeadingRadius: 10, topTrailingRadius: 10))
     }
 }
-

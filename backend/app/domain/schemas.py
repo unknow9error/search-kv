@@ -1,10 +1,23 @@
 import math
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    GetJsonSchemaHandler,
+    HttpUrl,
+    RootModel,
+    field_validator,
+    model_validator,
+)
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
+
+from app.domain.project_input import ProjectInput
 
 
 class StrictModel(BaseModel):
@@ -129,6 +142,7 @@ class Snapshot(StrictModel):
     allow_empty: bool = False
     scope_city: str | None = None
     project_contexts: list["ProjectContextInput"] = Field(default_factory=list, max_length=500)
+    projects: list[ProjectInput] = Field(default_factory=list, max_length=20000)
 
     _timestamp = field_validator("as_of")(POIInput.timestamp.__func__)
     _city = field_validator("scope_city")(normalize_city)
@@ -141,6 +155,10 @@ class Snapshot(StrictModel):
             raise ValueError("Empty complete snapshot needs explicit allow_empty")
         if self.scope_city and any(x.city != self.scope_city for x in self.items):
             raise ValueError("Snapshot contains records outside declared city")
+        if len({x.external_id for x in self.projects}) != len(self.projects):
+            raise ValueError("Duplicate project external IDs in snapshot")
+        if self.scope_city and any(x.city != self.scope_city for x in self.projects):
+            raise ValueError("Snapshot contains projects outside declared city")
         return self
 
 
@@ -254,6 +272,11 @@ class TurnRequest(StrictModel):
 
 class ConversationRequest(StrictModel):
     preferences: Preferences = Field(default_factory=Preferences)
+    client_conversation_id: UUID | None = Field(
+        default=None,
+        description="Persist before creation and reuse with identical initial preferences when retrying. "
+        "The key is scoped to the authenticated user; a conflicting retry returns idempotency_conflict.",
+    )
 
 
 class RefreshRequest(StrictModel):
@@ -284,6 +307,312 @@ class AppConfiguration(StrictModel):
     privacy_url: str | None
     terms_url: str | None
     retention_days: int
+    capabilities: list[str] = Field(
+        default_factory=list, description="Supported optional API features; absent means legacy."
+    )
+
+
+class ProfileResponse(StrictModel):
+    id: UUID
+    identity: Literal["anonymous"]
+    retention_days: int
+
+
+class ConversationSummary(StrictModel):
+    id: UUID
+    title: str
+    preferences: Preferences
+
+
+class ConversationListItem(ConversationSummary):
+    updated_at: datetime
+
+
+class ConversationPage(StrictModel):
+    items: list[ConversationListItem]
+
+
+TurnStatus = Literal["running", "complete", "failed", "interrupted"]
+TerminalTurnStatus = Literal["complete", "failed", "interrupted"]
+
+
+class AcceptedPayload(StrictModel):
+    turn_id: UUID
+    conversation_id: UUID
+
+
+class TextPayload(StrictModel):
+    text: str
+
+
+class Citation(StrictModel):
+    id: str
+    title: str
+    url: str
+    demo: bool
+
+
+class MessagePayload(TextPayload):
+    citations: list[Citation]
+
+
+class ListingsPayload(StrictModel):
+    items: list[Listing]
+    phase: Literal["catalog", "refresh"]
+    replace: Literal[True] = Field(description="Replace the current result set, preserving item order.")
+
+
+class SuggestionsPayload(StrictModel):
+    items: list[str]
+
+
+class ProviderPayload(StrictModel):
+    provider_id: str
+    name: str
+    status: str = Field(
+        description="Provider progress or source error code. Known progress values include batch, "
+        "complete, recently_checked, updating, temporarily_unavailable and timeout. Other values "
+        "describe source failures and must be handled as an incomplete refresh.",
+        examples=["batch", "complete", "recently_checked", "invalid_schema", "unavailable"],
+    )
+    count: int = Field(
+        ge=0, description="Records accepted for this batch or completed provider refresh."
+    )
+
+
+class StreamErrorPayload(TextPayload):
+    code: Literal["turn_failed"]
+
+
+class DonePayload(StrictModel):
+    status: TerminalTurnStatus = Field(description="Only complete denotes successful completion.")
+    turn_id: UUID
+
+
+class PendingPayload(StrictModel):
+    """Replay is a snapshot; poll again after pending to read later durable events."""
+
+
+class HistoryEventBase(StrictModel):
+    sequence: int = Field(ge=1)
+
+
+class HistoryMessageEvent(HistoryEventBase):
+    kind: Literal["message"]
+    payload: MessagePayload
+
+
+class HistoryPreferencesEvent(HistoryEventBase):
+    kind: Literal["preferences"]
+    payload: Preferences
+
+
+class HistoryDoneEvent(HistoryEventBase):
+    kind: Literal["done"]
+    payload: DonePayload
+
+
+class HistoryNoticeEvent(HistoryEventBase):
+    kind: Literal["notice"]
+    payload: TextPayload
+
+
+class HistoryListingsEvent(HistoryEventBase):
+    kind: Literal["listings"]
+    payload: ListingsPayload
+
+
+HistoryEvent = Annotated[
+    HistoryMessageEvent
+    | HistoryPreferencesEvent
+    | HistoryDoneEvent
+    | HistoryNoticeEvent
+    | HistoryListingsEvent,
+    Field(discriminator="kind"),
+]
+
+
+class HistoryTurn(StrictModel):
+    id: UUID
+    message: str
+    status: TurnStatus
+    events: list[HistoryEvent]
+
+
+class ConversationHistory(ConversationSummary):
+    has_more: bool
+    next_before: UUID | None = Field(
+        description="Cursor for the preceding page; null when has_more is false."
+    )
+    turns: list[HistoryTurn] = Field(
+        description="Up to 30 turns in chronological order. Only message, preferences, done, notice "
+        "and the latest listings result set in this page are retained in this response."
+    )
+
+
+class SSEEventBase(StrictModel):
+    id: int = Field(
+        ge=1, description="Durable sequence; pass it as the after query parameter on replay."
+    )
+
+
+class SSEAcceptedEvent(SSEEventBase):
+    event: Literal["accepted"]
+    data: AcceptedPayload
+
+
+class SSEStatusEvent(SSEEventBase):
+    event: Literal["status"]
+    data: TextPayload
+
+
+class SSENoticeEvent(SSEEventBase):
+    event: Literal["notice"]
+    data: TextPayload
+
+
+class SSEPreferencesEvent(SSEEventBase):
+    event: Literal["preferences"]
+    data: Preferences
+
+
+class SSEListingsEvent(SSEEventBase):
+    event: Literal["listings"]
+    data: ListingsPayload
+
+
+class SSEMessageEvent(SSEEventBase):
+    event: Literal["message"]
+    data: MessagePayload
+
+
+class SSESuggestionsEvent(SSEEventBase):
+    event: Literal["suggestions"]
+    data: SuggestionsPayload
+
+
+class SSEProviderEvent(SSEEventBase):
+    event: Literal["provider"]
+    data: ProviderPayload
+
+
+class SSEErrorEvent(SSEEventBase):
+    event: Literal["error"]
+    data: StreamErrorPayload
+
+
+class SSEDoneEvent(SSEEventBase):
+    id: int | None = Field(
+        default=None, ge=1, description="Omitted for a terminal replay marker without a durable event."
+    )
+    event: Literal["done"]
+    data: DonePayload
+
+
+class SSEPendingEvent(StrictModel):
+    id: None = Field(default=None, description="A pending replay marker has no durable sequence.")
+    event: Literal["pending"]
+    data: PendingPayload
+
+
+SSEEvent = Annotated[
+    SSEAcceptedEvent
+    | SSEStatusEvent
+    | SSENoticeEvent
+    | SSEPreferencesEvent
+    | SSEListingsEvent
+    | SSEMessageEvent
+    | SSESuggestionsEvent
+    | SSEProviderEvent
+    | SSEErrorEvent
+    | SSEDoneEvent
+    | SSEPendingEvent,
+    Field(discriminator="event"),
+]
+
+
+class SSEStreamSchema(RootModel[SSEEvent]):
+    """Documentation-only stream schema. The HTTP body is SSE text, not a JSON envelope."""
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, core_schema: CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        event_schema = handler(core_schema)
+        event_schema.pop("title", None)
+        return {
+            "type": "string",
+            "format": "text/event-stream",
+            "title": cls.__name__,
+            "description": "UTF-8 Server-Sent Events framed as id, event and JSON data fields, "
+            "followed by a blank line. x-event-schema describes one parsed event. Unknown event "
+            "names may be added; clients should ignore them. Replay uses after, not Last-Event-ID.",
+            "x-event-schema": event_schema,
+        }
+
+
+class APIError(StrictModel):
+    code: str = Field(description="Stable machine-readable error code; no request inputs are echoed.")
+
+
+class APIErrorResponse(StrictModel):
+    error: APIError
+
+
+API_ERROR_RESPONSES = {
+    401: {
+        "model": APIErrorResponse,
+        "description": "session_expired: missing, invalid or expired session.",
+    },
+    404: {
+        "model": APIErrorResponse,
+        "description": "apartment_not_found, conversation_not_found or turn_not_found. "
+        "Resources owned by another user also return not found.",
+    },
+    409: {
+        "model": APIErrorResponse,
+        "description": "idempotency_conflict, turn_in_progress, favorites_limit, conversations_limit "
+        "or conversation_limit. Reusing an idempotency key with a different request is a conflict.",
+    },
+    413: {
+        "model": APIErrorResponse,
+        "description": "request_too_large: request body exceeds the limit.",
+    },
+    422: {
+        "model": APIErrorResponse,
+        "description": "invalid_request: body or path/query validation failed.",
+    },
+    429: {
+        "model": APIErrorResponse,
+        "description": "rate_limited: wait for Retry-After seconds before retrying.",
+        "headers": {"Retry-After": {"schema": {"type": "integer"}, "description": "Delay in seconds."}},
+    },
+    503: {"model": APIErrorResponse, "description": "temporarily_unavailable: retry with backoff."},
+}
+API_ERROR_RESPONSES = {
+    status: {
+        **response,
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/APIErrorResponse"}}},
+    }
+    for status, response in API_ERROR_RESPONSES.items()
+}
+
+
+SSE_DOCUMENTATION_RESPONSES = {
+    # FastAPI assigns additional response models the route's success media type.
+    # Preserve JSON for HTTP errors before SSE opens; JSON routes register the model.
+    **{
+        status: {key: value for key, value in response.items() if key != "model"}
+        for status, response in API_ERROR_RESPONSES.items()
+    },
+    200: {
+        "model": SSEStreamSchema,
+        "description": "Durable event stream. A replay is a snapshot ending with pending while the "
+        "turn runs, or done when it has terminated. Persist accepted.turn_id (also supplied as "
+        "X-Turn-ID when sending a turn) and the last durable event id to resume safely.",
+        "content": {"text/event-stream": {}},
+    },
+}
 
 
 def distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> int:

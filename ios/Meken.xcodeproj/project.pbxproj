@@ -8,20 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		27A674291844DD577222D940 /* AppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66716ABB90F8F74A972301F0 /* AppStore.swift */; };
+		2A71D1A62063CCA176A4038F /* AccountRecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 927F77AFE61F23D05A9849F5 /* AccountRecoveryView.swift */; };
+		3D1D3152AF108A8DAE9C3E10 /* CatalogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB47DA79D5F3723C7D58A60E /* CatalogStore.swift */; };
 		3D6848C72823BD7E48F8361C /* FiltersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5DD64F177E845BD2ED8790 /* FiltersView.swift */; };
+		487F5200F392B9EFA297405D /* CatalogComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1929378A973D014C3A8303D9 /* CatalogComponents.swift */; };
 		52F4557E8C6FAFD92408B892 /* MekenApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C150404C7152FA6DD607AF52 /* MekenApp.swift */; };
 		6408254783A9DD1877ADE165 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71D345D7A969233768C19742 /* Theme.swift */; };
 		660ECFA87EB9310FAF93C2AD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6BBC061B16F176845FAC880C /* Assets.xcassets */; };
 		7ACA8F810723ED77C163F09D /* MekenUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84728F3C5C9142762EAA8F01 /* MekenUITests.swift */; };
 		7D9A19AB3778A3E48D3722E2 /* SavedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 846D026F90EFFB18338BF382 /* SavedView.swift */; };
+		7EA90331537D9659A5C0300D /* CatalogRecoveryPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB6CEDC379C9B0E74520F4C0 /* CatalogRecoveryPanel.swift */; };
 		8283CD62D6C69687F19334C1 /* MekenCore in Frameworks */ = {isa = PBXBuildFile; productRef = 70FA1DD252E899276531B93D /* MekenCore */; };
 		A2FF269D971ECCEFFB66D1E3 /* ApartmentDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F89FF7EB262CE3C66F29E7B9 /* ApartmentDetailView.swift */; };
+		A82C5DC197609497D52519CF /* CatalogDetailScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A19B12DC37CFB79D36356ED /* CatalogDetailScreens.swift */; };
 		AE8BDAE601CEADDE73F6B3EA /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E265EF0CCD16BE291F04C04 /* SettingsView.swift */; };
 		B528AC7E079129D715041FD2 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FB17317314DBC7E5DF7FCEEA /* PrivacyInfo.xcprivacy */; };
 		B5EAE2345A125952F4D94E95 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABE4A2B4C76277C99C8679BA /* APIClient.swift */; };
 		BA8AE33FF53A741C563176FA /* ApartmentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89A13DA7247D485B18CA9394 /* ApartmentCard.swift */; };
 		C09DBDD05993430AF75D3D47 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 545671EAD901E7F939D6533B /* SearchView.swift */; };
+		E161DDF9F18AD18D342FFA0E /* CatalogRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16CE95200C67F0EFDCA9DB0 /* CatalogRootView.swift */; };
+		E47286A6D39F903ABB9432F9 /* CatalogDiscoveryScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0B1DAB80E62FAB4401141C8 /* CatalogDiscoveryScreens.swift */; };
 		F0413360956F799D934B90EC /* TokenVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B7BAA809A2B302A02CEDC50 /* TokenVault.swift */; };
+		FD2D0A0A958F1EC2D7A0D417 /* CatalogUtilityScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D0AB5DE7D236D62D9E63E80 /* CatalogUtilityScreens.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,11 +43,14 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1929378A973D014C3A8303D9 /* CatalogComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogComponents.swift; sourceTree = "<group>"; };
 		1B7BAA809A2B302A02CEDC50 /* TokenVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenVault.swift; sourceTree = "<group>"; };
+		1D0AB5DE7D236D62D9E63E80 /* CatalogUtilityScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogUtilityScreens.swift; sourceTree = "<group>"; };
 		219C0AB16DC9AE45AABBF25A /* MekenUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MekenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		545671EAD901E7F939D6533B /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		5A19B12DC37CFB79D36356ED /* CatalogDetailScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogDetailScreens.swift; sourceTree = "<group>"; };
 		5B34F84763CC166D985B0D9B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		5D1E24369214D6181F1D3AAF /* MekenCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MekenCore; path = MekenCore; sourceTree = SOURCE_ROOT; };
+		5D1E24369214D6181F1D3AAF /* MekenCore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = MekenCore; sourceTree = SOURCE_ROOT; };
 		66716ABB90F8F74A972301F0 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
 		6BBC061B16F176845FAC880C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		71D345D7A969233768C19742 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -47,12 +58,17 @@
 		84728F3C5C9142762EAA8F01 /* MekenUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MekenUITests.swift; sourceTree = "<group>"; };
 		89A13DA7247D485B18CA9394 /* ApartmentCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApartmentCard.swift; sourceTree = "<group>"; };
 		8E265EF0CCD16BE291F04C04 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		927F77AFE61F23D05A9849F5 /* AccountRecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountRecoveryView.swift; sourceTree = "<group>"; };
 		ABE4A2B4C76277C99C8679BA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		C150404C7152FA6DD607AF52 /* MekenApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MekenApp.swift; sourceTree = "<group>"; };
 		CD5DD64F177E845BD2ED8790 /* FiltersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FiltersView.swift; sourceTree = "<group>"; };
-		CE6615773621061AF5BF5673 /* Meken.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Meken.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CE6615773621061AF5BF5673 /* Meken.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Meken.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0B1DAB80E62FAB4401141C8 /* CatalogDiscoveryScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogDiscoveryScreens.swift; sourceTree = "<group>"; };
+		E16CE95200C67F0EFDCA9DB0 /* CatalogRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogRootView.swift; sourceTree = "<group>"; };
+		EB47DA79D5F3723C7D58A60E /* CatalogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogStore.swift; sourceTree = "<group>"; };
 		F89FF7EB262CE3C66F29E7B9 /* ApartmentDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApartmentDetailView.swift; sourceTree = "<group>"; };
-		FB17317314DBC7E5DF7FCEEA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		FB17317314DBC7E5DF7FCEEA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		FB6CEDC379C9B0E74520F4C0 /* CatalogRecoveryPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogRecoveryPanel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,12 +94,14 @@
 		2958003DA0B6447A39C175AF /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				927F77AFE61F23D05A9849F5 /* AccountRecoveryView.swift */,
 				89A13DA7247D485B18CA9394 /* ApartmentCard.swift */,
 				F89FF7EB262CE3C66F29E7B9 /* ApartmentDetailView.swift */,
 				CD5DD64F177E845BD2ED8790 /* FiltersView.swift */,
 				846D026F90EFFB18338BF382 /* SavedView.swift */,
 				545671EAD901E7F939D6533B /* SearchView.swift */,
 				8E265EF0CCD16BE291F04C04 /* SettingsView.swift */,
+				CBC43DBC5DB047A241824616 /* Catalog */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -122,6 +140,20 @@
 				F18D4D263BA2B27F0FA29600 /* Packages */,
 				FB4E810ADC45D1B95667A803 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		CBC43DBC5DB047A241824616 /* Catalog */ = {
+			isa = PBXGroup;
+			children = (
+				1929378A973D014C3A8303D9 /* CatalogComponents.swift */,
+				5A19B12DC37CFB79D36356ED /* CatalogDetailScreens.swift */,
+				D0B1DAB80E62FAB4401141C8 /* CatalogDiscoveryScreens.swift */,
+				FB6CEDC379C9B0E74520F4C0 /* CatalogRecoveryPanel.swift */,
+				E16CE95200C67F0EFDCA9DB0 /* CatalogRootView.swift */,
+				EB47DA79D5F3723C7D58A60E /* CatalogStore.swift */,
+				1D0AB5DE7D236D62D9E63E80 /* CatalogUtilityScreens.swift */,
+			);
+			path = Catalog;
 			sourceTree = "<group>";
 		};
 		DB57D4F5976E448374FAAEF2 /* Meken */ = {
@@ -215,11 +247,11 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					0865F346739A8A9090653D5E = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 8885RF248C;
 						ProvisioningStyle = Automatic;
 					};
 					EB81B0F6C13AB6BDD9D8DDC3 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = 8885RF248C;
 						ProvisioningStyle = Automatic;
 						TestTargetID = 0865F346739A8A9090653D5E;
 					};
@@ -278,7 +310,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ \"$CONFIGURATION\" = \"Release\" ]; then\n  case \"$MEKEN_API_BASE_URL\" in\n    https://*.invalid*|*localhost*|*127.0.0.1*) echo \"error: Configure a real HTTPS production API endpoint\"; exit 1 ;;\n    https://*) ;;\n    *) echo \"error: Release API must use HTTPS\"; exit 1 ;;\n  esac\nfi\n";
+			shellScript = "if [ \"$CONFIGURATION\" = \"Release\" ]; then\n  if [ \"$MEKEN_API_BASE_URL\" != \"https://194.238.43.134\" ]; then\n    echo \"error: Meken Release API must be https://194.238.43.134; local overrides belong to Debug\"\n    exit 1\n  fi\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -296,9 +328,17 @@
 			buildActionMask = 2147483647;
 			files = (
 				B5EAE2345A125952F4D94E95 /* APIClient.swift in Sources */,
+				2A71D1A62063CCA176A4038F /* AccountRecoveryView.swift in Sources */,
 				BA8AE33FF53A741C563176FA /* ApartmentCard.swift in Sources */,
 				A2FF269D971ECCEFFB66D1E3 /* ApartmentDetailView.swift in Sources */,
 				27A674291844DD577222D940 /* AppStore.swift in Sources */,
+				487F5200F392B9EFA297405D /* CatalogComponents.swift in Sources */,
+				A82C5DC197609497D52519CF /* CatalogDetailScreens.swift in Sources */,
+				E47286A6D39F903ABB9432F9 /* CatalogDiscoveryScreens.swift in Sources */,
+				7EA90331537D9659A5C0300D /* CatalogRecoveryPanel.swift in Sources */,
+				E161DDF9F18AD18D342FFA0E /* CatalogRootView.swift in Sources */,
+				3D1D3152AF108A8DAE9C3E10 /* CatalogStore.swift in Sources */,
+				FD2D0A0A958F1EC2D7A0D417 /* CatalogUtilityScreens.swift in Sources */,
 				3D6848C72823BD7E48F8361C /* FiltersView.swift in Sources */,
 				52F4557E8C6FAFD92408B892 /* MekenApp.swift in Sources */,
 				7D9A19AB3778A3E48D3722E2 /* SavedView.swift in Sources */,
@@ -330,7 +370,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = kz.meken.app.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = kz.unknown.meken.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Meken;
@@ -348,8 +388,12 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = kz.meken.app;
+				PRODUCT_BUNDLE_IDENTIFIER = kz.unknown.meken;
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
@@ -391,7 +435,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 8885RF248C;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -405,7 +449,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
-				MEKEN_API_BASE_URL = "https://api.meken.invalid";
+				MEKEN_API_BASE_URL = "https://194.238.43.134";
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -429,7 +473,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = kz.meken.app.uitests;
+				PRODUCT_BUNDLE_IDENTIFIER = kz.unknown.meken.uitests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = Meken;
@@ -447,8 +491,12 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = kz.meken.app;
+				PRODUCT_BUNDLE_IDENTIFIER = kz.unknown.meken;
 				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
@@ -490,7 +538,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 8885RF248C;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -510,7 +558,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
-				MEKEN_API_BASE_URL = "http://127.0.0.1:8001";
+				MEKEN_API_BASE_URL = "https://194.238.43.134";
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

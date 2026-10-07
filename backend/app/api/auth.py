@@ -7,9 +7,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import delete, select, update
 
 from app.domain.models import Session, User, utcnow
-from app.domain.schemas import RefreshRequest, TokenResponse
+from app.domain.recovery import RecoveryCredential
+from app.domain.schemas import API_ERROR_RESPONSES, ProfileResponse, RefreshRequest, TokenResponse
 
-router = APIRouter(prefix="/v1", tags=["identity"])
+router = APIRouter(prefix="/v1", tags=["identity"], responses=API_ERROR_RESPONSES)
 bearer = HTTPBearer(auto_error=False)
 
 
@@ -77,6 +78,13 @@ async def refresh_tokens(body: RefreshRequest, request: Request, response: Respo
     await rate_limit(request, "refresh:" + client_key(request), 60)
     access, refresh, fields = token_pair()
     async with request.app.state.db.sessions.begin() as db:
+        user_id = await db.scalar(
+            select(Session.user_id).where(
+                Session.refresh_hash == digest(body.refresh_token), Session.refresh_expires_at > utcnow()
+            )
+        )
+        if not user_id or not await db.scalar(select(User).where(User.id == user_id).with_for_update()):
+            raise HTTPException(401, "session_expired")
         # A conditional UPDATE makes refresh single-use across all API replicas.
         result = await db.execute(
             update(Session)
@@ -89,11 +97,18 @@ async def refresh_tokens(body: RefreshRequest, request: Request, response: Respo
         user_id = result.scalar_one_or_none()
         if not user_id:
             raise HTTPException(401, "session_expired")
+        # Account recovery follows the advertised retention window after device activity.
+        # User is locked before session/credential writes to avoid cascade lock inversions.
+        await db.execute(
+            update(RecoveryCredential)
+            .where(RecoveryCredential.user_id == user_id)
+            .values(updated_at=utcnow())
+        )
     response.headers["Cache-Control"] = "no-store"
     return {"access_token": access, "refresh_token": refresh, "expires_in": 3600, "user_id": user_id}
 
 
-@router.get("/me")
+@router.get("/me", response_model=ProfileResponse)
 async def profile(request: Request, user_id: str = Depends(current_user)):
     return {
         "id": user_id,

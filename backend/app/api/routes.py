@@ -1,15 +1,20 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from starlette.responses import StreamingResponse
 
 from app.api.auth import current_user, rate_limit
 from app.domain.models import Conversation, Favorite, Turn, TurnEvent, aware
 from app.domain.schemas import (
+    API_ERROR_RESPONSES,
+    SSE_DOCUMENTATION_RESPONSES,
     AppConfiguration,
+    ConversationHistory,
+    ConversationPage,
     ConversationRequest,
+    ConversationSummary,
     Listing,
     ListingPage,
     Preferences,
@@ -17,8 +22,9 @@ from app.domain.schemas import (
     TurnRequest,
     VerificationResponse,
 )
+from app.services.conversations import create_conversation as create_conversation_record
 
-router = APIRouter(prefix="/v1", tags=["discovery"])
+router = APIRouter(prefix="/v1", tags=["discovery"], responses=API_ERROR_RESPONSES)
 
 
 @router.get("/config", response_model=AppConfiguration)
@@ -32,6 +38,18 @@ async def config(request: Request):
         "privacy_url": settings.privacy_url or None,
         "terms_url": settings.terms_url or None,
         "retention_days": settings.retention_days,
+        "capabilities": [
+            "idempotent_conversation_create",
+            "account_recovery",
+            "project_catalog",
+            "project_map",
+            "project_comparison",
+            "project_favorites",
+            "project_layouts",
+            "project_conversations_basic",
+            "catalog_sources",
+            "data_reports",
+        ],
     }
 
 
@@ -108,24 +126,18 @@ async def remove_favorite(apartment_id: UUID, request: Request, user_id: str = D
     return Response(status_code=204)
 
 
-@router.post("/conversations", status_code=201)
+@router.post("/conversations", status_code=201, response_model=ConversationSummary)
 async def create_conversation(
     body: ConversationRequest, request: Request, user_id: str = Depends(current_user)
 ):
-    await rate_limit(request, "conversation-create:" + user_id, 10)
-    async with request.app.state.db.sessions.begin() as db:
-        count = await db.scalar(
-            select(func.count()).select_from(Conversation).where(Conversation.user_id == user_id)
-        )
-        if count >= 100:
-            raise HTTPException(409, "conversations_limit")
-        conversation = Conversation(user_id=user_id, preferences=body.preferences.model_dump())
-        db.add(conversation)
-        await db.flush()
+    async def limit():
+        await rate_limit(request, "conversation-create:" + user_id, 10)
+
+    conversation = await create_conversation_record(request.app.state.db, user_id, body, limit)
     return {"id": conversation.id, "title": conversation.title, "preferences": conversation.preferences}
 
 
-@router.get("/conversations")
+@router.get("/conversations", response_model=ConversationPage)
 async def conversations(request: Request, user_id: str = Depends(current_user)):
     async with request.app.state.db.sessions() as db:
         rows = (
@@ -149,7 +161,7 @@ async def conversations(request: Request, user_id: str = Depends(current_user)):
     }
 
 
-@router.put("/conversations/{conversation_id}/preferences")
+@router.put("/conversations/{conversation_id}/preferences", response_model=Preferences)
 async def update_preferences(
     conversation_id: UUID, body: Preferences, request: Request, user_id: str = Depends(current_user)
 ):
@@ -172,7 +184,7 @@ async def update_preferences(
     return body
 
 
-@router.get("/conversations/{conversation_id}")
+@router.get("/conversations/{conversation_id}", response_model=ConversationHistory)
 async def history(
     conversation_id: UUID,
     request: Request,
@@ -186,8 +198,15 @@ async def history(
             anchor = await db.get(Turn, str(before))
             if not anchor or anchor.conversation_id != str(conversation_id):
                 raise HTTPException(404, "turn_not_found")
-            query = query.where(Turn.created_at < anchor.created_at)
-        page = list((await db.scalars(query.order_by(Turn.created_at.desc()).limit(31))).all())
+            query = query.where(
+                or_(
+                    Turn.created_at < anchor.created_at,
+                    and_(Turn.created_at == anchor.created_at, Turn.id < anchor.id),
+                )
+            )
+        page = list(
+            (await db.scalars(query.order_by(Turn.created_at.desc(), Turn.id.desc()).limit(31))).all()
+        )
         has_more = len(page) > 30
         turns = list(reversed(page[:30]))
         turn_ids = [t.id for t in turns]
@@ -213,7 +232,7 @@ async def history(
                 select(TurnEvent)
                 .join(Turn)
                 .where(Turn.id.in_(turn_ids), TurnEvent.kind == "listings")
-                .order_by(Turn.created_at.desc(), TurnEvent.sequence.desc())
+                .order_by(Turn.created_at.desc(), Turn.id.desc(), TurnEvent.sequence.desc())
                 .limit(1)
             )
             if latest_result:
@@ -244,23 +263,33 @@ async def history(
 async def delete_conversation(
     conversation_id: UUID, request: Request, user_id: str = Depends(current_user)
 ):
+    from app.core.coordination import BusyError
+
     await request.app.state.chat.conversation(str(conversation_id), user_id)
-    if await request.app.state.coordination.get("conversation:" + str(conversation_id)):
-        raise HTTPException(409, "turn_in_progress")
-    async with request.app.state.db.sessions.begin() as db:
-        await db.execute(
-            delete(Conversation).where(
-                Conversation.id == str(conversation_id), Conversation.user_id == user_id
-            )
-        )
+    try:
+        async with request.app.state.coordination.lease("conversation:" + str(conversation_id), 15):
+            async with request.app.state.db.sessions.begin() as db:
+                await db.execute(
+                    delete(Conversation).where(
+                        Conversation.id == str(conversation_id), Conversation.user_id == user_id
+                    )
+                )
+    except BusyError:
+        raise HTTPException(409, "turn_in_progress") from None
     return Response(status_code=204)
 
 
 STREAM_HEADERS = {"Cache-Control": "no-store", "X-Accel-Buffering": "no", "Content-Encoding": "identity"}
 
 
+class SSEStreamingResponse(StreamingResponse):
+    media_type = "text/event-stream"
+
+
 @router.post(
-    "/conversations/{conversation_id}/turns", responses={200: {"content": {"text/event-stream": {}}}}
+    "/conversations/{conversation_id}/turns",
+    response_class=SSEStreamingResponse,
+    responses=SSE_DOCUMENTATION_RESPONSES,
 )
 async def send_turn(
     conversation_id: UUID, body: TurnRequest, request: Request, user_id: str = Depends(current_user)
@@ -278,7 +307,11 @@ async def send_turn(
     )
 
 
-@router.get("/conversations/{conversation_id}/turns/{turn_id}/events")
+@router.get(
+    "/conversations/{conversation_id}/turns/{turn_id}/events",
+    response_class=SSEStreamingResponse,
+    responses=SSE_DOCUMENTATION_RESPONSES,
+)
 async def replay(
     conversation_id: UUID,
     turn_id: UUID,

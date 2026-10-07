@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.Meken.Base" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#FFFFFF</item>
+        <item name="android:colorBackground">#FFFFFF</item>
+    </style>
+    <style name="Theme.Meken" parent="Theme.Meken.Base" />
+</resources>

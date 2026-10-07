@@ -1,6 +1,6 @@
 name: Meken
 options:
-  bundleIdPrefix: kz.meken
+  bundleIdPrefix: kz.unknown
   deploymentTarget:
     iOS: "18.0"
   xcodeVersion: "26.0"
@@ -10,18 +10,18 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
     SWIFT_APPROACHABLE_CONCURRENCY: NO
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: "8885RF248C"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
     ENABLE_USER_SCRIPT_SANDBOXING: YES
-    MEKEN_API_BASE_URL: https://api.meken.invalid
+    MEKEN_API_BASE_URL: https://194.238.43.134
   configs:
     Debug:
-      MEKEN_API_BASE_URL: http://127.0.0.1:8001
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
     Release:
       SWIFT_COMPILATION_MODE: wholemodule
+      MEKEN_API_BASE_URL: https://194.238.43.134
 packages:
   MekenCore:
     path: MekenCore
@@ -35,7 +35,7 @@ targets:
       - package: MekenCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: kz.meken.app
+        PRODUCT_BUNDLE_IDENTIFIER: kz.unknown.meken
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -44,6 +44,8 @@ targets:
       properties:
         CFBundleDisplayName: Meken
         MekenAPIBaseURL: $(MEKEN_API_BASE_URL)
+        NSFaceIDUsageDescription: Подтвердите, что это ваше устройство, чтобы показать код доступа к подборкам.
+        NSLocalNetworkUsageDescription: Подключение к локальному тестовому серверу при проверке приложения разработчиком.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIApplicationSupportsIndirectInputEvents: true
@@ -54,11 +56,10 @@ targets:
       - name: Validate release endpoint
         script: |
           if [ "$CONFIGURATION" = "Release" ]; then
-            case "$MEKEN_API_BASE_URL" in
-              https://*.invalid*|*localhost*|*127.0.0.1*) echo "error: Configure a real HTTPS production API endpoint"; exit 1 ;;
-              https://*) ;;
-              *) echo "error: Release API must use HTTPS"; exit 1 ;;
-            esac
+            if [ "$MEKEN_API_BASE_URL" != "https://194.238.43.134" ]; then
+              echo "error: Meken Release API must be https://194.238.43.134; local overrides belong to Debug"
+              exit 1
+            fi
           fi
         basedOnDependencyAnalysis: false
   MekenUITests:
@@ -69,7 +70,7 @@ targets:
       - target: Meken
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: kz.meken.app.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: kz.unknown.meken.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Meken
 schemes:

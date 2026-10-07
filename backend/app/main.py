@@ -12,6 +12,8 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import JSONResponse, Response
 
 from app.api.auth import router as auth_router
+from app.api.projects import router as projects_router
+from app.api.recovery import router as recovery_router
 from app.api.routes import router
 from app.core.config import Settings, get_settings
 from app.core.coordination import Coordination
@@ -21,6 +23,8 @@ from app.providers.registry import build_providers, sync_registry
 from app.services.assistant import Assistant
 from app.services.catalog import Catalog
 from app.services.chat import Chat
+from app.services.project_conversations import ProjectConversations
+from app.services.projects import Projects, bootstrap_legacy_projects
 
 
 class BodyLimitMiddleware:
@@ -129,6 +133,9 @@ def create_app(
             catalog = Catalog(db, coordination, providers, settings)
             app.state.catalog, app.state.assistant = catalog, assistant
             app.state.chat = Chat(db, coordination, catalog, assistant)
+            await bootstrap_legacy_projects(db, catalog, settings)
+            app.state.projects = Projects(db, coordination, catalog, settings)
+            app.state.project_chat = ProjectConversations(db, coordination, app.state.projects, settings)
             yield
         finally:
             await assistant.close()
@@ -205,7 +212,9 @@ def create_app(
         return Response(generate_latest(), headers={"Content-Type": CONTENT_TYPE_LATEST})
 
     app.include_router(auth_router)
+    app.include_router(recovery_router)
     app.include_router(router)
+    app.include_router(projects_router)
     return app
 
 

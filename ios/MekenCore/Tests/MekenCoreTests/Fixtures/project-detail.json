@@ -1,0 +1,85 @@
+{
+  "id": "041c8ae5-2f12-57b2-af67-e211293ce8dd",
+  "provider_id": "design-arna",
+  "provider_name": "Сайт Arna Homes",
+  "external_id": "design-north",
+  "name": "ЖК Северный сад",
+  "city": "Астана",
+  "district": "Есиль",
+  "address": null,
+  "developer_name": "Arna Homes",
+  "bigville_id": null,
+  "bigville_name": null,
+  "latitude": 51.116,
+  "longitude": 71.422,
+  "source_url": "https://arna-homes.example/projects/design-north",
+  "website_url": "https://arna-homes.example/projects/design-north",
+  "website_scope": "project",
+  "observed_at": "2026-10-04T08:00:00Z",
+  "received_at": "2026-10-04T21:57:45.268803Z",
+  "version": 1,
+  "record_origin": "public_project",
+  "provenance": "demo",
+  "freshness": "recent",
+  "stage": "under_construction",
+  "completion": "IV кв. 2027",
+  "completion_date": null,
+  "finish": "Предчистовая",
+  "published_starting_price": {
+    "kind": "published_starting_price",
+    "amount_kzt": 29900000,
+    "source_url": "https://arna-homes.example/projects/design-north",
+    "observed_at": "2026-10-04T08:00:00Z"
+  },
+  "observed_listing_minimum": null,
+  "display_price": {
+    "kind": "published_starting_price",
+    "amount_kzt": 29900000,
+    "source_url": "https://arna-homes.example/projects/design-north",
+    "observed_at": "2026-10-04T08:00:00Z"
+  },
+  "buildings": [
+    {
+      "external_id": "1",
+      "name": "Корпус 1",
+      "stage": "under_construction",
+      "completion": "IV кв. 2027",
+      "completion_date": null,
+      "total_floors": null,
+      "source_url": "https://arna-homes.example/projects/design-north",
+      "observed_at": "2026-10-04T08:00:00Z"
+    }
+  ],
+  "images": [
+    {
+      "url": "https://media.example/design-north.png",
+      "kind": "facade",
+      "caption": null,
+      "source_url": "https://arna-homes.example/projects/design-north",
+      "observed_at": "2026-10-04T08:00:00Z"
+    }
+  ],
+  "documents": [],
+  "layouts": [
+    {
+      "id": "8098ad92-7888-5e38-bf5a-97e67e3500d8",
+      "project_id": "041c8ae5-2f12-57b2-af67-e211293ce8dd",
+      "external_id": "design-type-2b",
+      "name": "2 комнаты",
+      "rooms": 2,
+      "area_m2": 62.4,
+      "image_url": "https://media.example/layout.png",
+      "source_url": "https://arna-homes.example/projects/design-north/layouts/2b",
+      "observed_at": "2026-10-04T08:00:00Z",
+      "received_at": "2026-10-04T21:57:45.268803Z",
+      "provenance": "demo",
+      "freshness": "recent",
+      "kind": "layout_type"
+    }
+  ],
+  "published_lot_count": 0,
+  "matched_lot_count": 0,
+  "available_layout_count": 1,
+  "amenities": [],
+  "project_facts": []
+}

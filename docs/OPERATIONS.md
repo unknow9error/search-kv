@@ -12,7 +12,9 @@ Production — отдельная среда и отдельная БД. Не п
 5. Настроить trusted proxy адрес для Uvicorn (`FORWARDED_ALLOW_IPS`), соответствующий адресу прокси с точки зрения контейнера. Нельзя доверять любому `X-Forwarded-For`: иначе IP-лимиты обходятся. Проверить, что разные реальные клиенты различаются в request.client. Не передавать `*` для произвольной сети.
 6. Подключить метрики по внутреннему адресу с `Authorization: Bearer <MEKEN_METRICS_TOKEN>`. Публичный Caddy закрывает служебные пути. Логи не включают тексты чатов, токены или тела ответов застройщиков.
 
-Для реального iPhone нужен доступный с телефона HTTPS API, а не `127.0.0.1` компьютера. Release-сборка отклоняет localhost, `.invalid` и не-HTTPS endpoint. Задать `DEVELOPMENT_TEAM`, bundle ID, подпись, App Store Connect и выполнить тест на физическом устройстве. Privacy manifest и тексты должны соответствовать фактически включённым сервисам и опубликованной политике.
+Для реального iPhone нужен доступный с телефона HTTPS API, а не `127.0.0.1` компьютера. Release-сборка отклоняет localhost, `.invalid` и не-HTTPS endpoint. С 1 октября 2026 года `ios/project.yml` настроен для [Meken в App Store Connect](https://appstoreconnect.apple.com/apps/6818146064): `DEVELOPMENT_TEAM=8885RF248C`, Bundle ID `kz.unknown.meken`, версия `1.0`, сборка `1`. Подключить учётную запись команды в Xcode, настроить подпись, задать реальный `MEKEN_API_BASE_URL`, загрузить подписанную сборку и выполнить тест на физическом устройстве. Privacy manifest и тексты должны соответствовать фактически включённым сервисам и опубликованной политике.
+
+2 октября 2026 года API запущен на `my-personal` с PostgreSQL, Redis, отдельными ролями БД и `MEKEN_ENV=production`. Адрес `https://194.238.43.134` указан для Debug и Release. На сервере используется Nginx с доверенным IP-сертификатом Let’s Encrypt, продление — через `meken-certbot.timer`. Детали и команды управления: [DEPLOYMENT.md](DEPLOYMENT.md). Пример Caddy выше остаётся альтернативой для развёртывания с доменом.
 
 ## Ресурсы и масштабирование
 
@@ -38,21 +40,11 @@ Production — отдельная среда и отдельная БД. Не п
 
 ## Резервные копии и восстановление
 
-```sh
-mkdir -p backups
-docker compose exec -T db pg_dump -U meken -d meken -Fc > backups/meken.dump
-```
+Подготовлены `scripts/meken-backup.py`, закрытый env template и systemd service/timer. Production runner требует явное внешнее S3/S3-compatible хранилище и public age recipient, создаёт consistent compressed dump, проверяет восстановление в отдельном одноразовом PostgreSQL container, шифрует payload и подтверждает SHA256 повторным скачиванием. Только после этого копия считается завершённой и выполняется daily rotation. `--keep` сохраняет свежую копию отдельно перед изменением схемы.
 
-Каталог `backups` должен быть закрыт от публичного доступа, файлы — зашифрованы до отправки во внешнее хранилище. Автоматизацию расписания, место хранения и срок хранения выбирает владелец сервера. Не хранить dumps в Git.
+При read-only проверке 4 октября 2026 года `meken-backup.timer` на сервере отсутствовал. Код и локальный restore-test не заменяют выбранный внешний destination, установленное расписание и offsite восстановление по private key. Настройка, команды, retention, проверки и текущие ограничения: [BACKUPS.md](BACKUPS.md). Не хранить dumps/keys в Git. Production использует `meken_admin` и оба Compose-файла; старая dev-роль `meken` для этой БД не подходит.
 
-Проверять восстановление в **отдельную БД**:
-
-```sh
-docker compose exec -T db createdb -U meken meken_restore_check
-docker compose exec -T db pg_restore -U meken -d meken_restore_check --no-owner < backups/meken.dump
-```
-
-Не использовать `--clean` по production БД без согласованного окна и актуальной копии. Для отката кода сохранить предыдущий образ. Откат схемы делать только после оценки потери данных; новая миграция часто безопаснее downgrade. Не удалять Docker volumes при обычном обновлении.
+Восстановление в production container и `--clean` по основной БД не являются проверкой backup. Для отката кода сохранить предыдущий образ. Откат схемы делать только после оценки потери данных; новая миграция часто безопаснее downgrade. Не удалять основные Docker volumes при обычном обновлении.
 
 ## Метрики и диагностика
 

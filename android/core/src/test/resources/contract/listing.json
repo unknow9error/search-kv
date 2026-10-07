@@ -1,0 +1,53 @@
+{
+  "id": "2cd7ef57-f1b7-4297-beb9-68320f09bcc3",
+  "provider_id": "bi-group",
+  "provider_name": "BI Group",
+  "complex_name": "Aisar",
+  "city": "Астана",
+  "district": "Есиль",
+  "address": "Астана",
+  "rooms": 2,
+  "area_m2": 62.5,
+  "floor": 8,
+  "total_floors": 12,
+  "price_kzt": 3550000000,
+  "status": "available",
+  "latitude": 51.128,
+  "longitude": 71.430,
+  "finish": "Предчистовая",
+  "completion": "2027",
+  "source_url": "https://bi.group/ru",
+  "image_url": null,
+  "observed_at": "2026-10-04T10:30:00.123456+05:00",
+  "version": 12,
+  "provenance": "provider",
+  "freshness": "stale",
+  "reasons": ["Две комнаты"],
+  "tradeoffs": ["Наличие нужно уточнить"],
+  "amenities": [
+    {
+      "kind": "school",
+      "name": "Школа",
+      "distance_m": 700,
+      "source_url": "https://www.openstreetmap.org/way/1",
+      "observed_at": "2026-10-04T05:30:00Z",
+      "distance_type": "straight_line"
+    }
+  ],
+  "bigville_name": null,
+  "project_facts": [
+    {
+      "id": "context-1",
+      "kind": "park",
+      "name": "Парк",
+      "state": "planned",
+      "relation": "within",
+      "scope_type": "complex",
+      "expected_opening": null,
+      "evidence": "Парк запланирован в описании проекта",
+      "source_url": "https://bi.group/ru",
+      "observed_at": "2026-10-04T05:30:00.123Z"
+    }
+  ],
+  "future_backend_field": "ignored by older clients"
+}

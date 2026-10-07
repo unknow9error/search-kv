@@ -157,8 +157,13 @@ class ContextDocument(Base):
 
 class Conversation(Base):
     __tablename__ = "conversations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "client_conversation_id", name="uq_conversation_client_request"),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    client_conversation_id: Mapped[str | None] = mapped_column(String(36))
+    initial_preferences_hash: Mapped[str | None] = mapped_column(String(64))
     preferences: Mapped[dict] = mapped_column(JSON, default=dict)
     last_listing_ids: Mapped[list] = mapped_column(JSON, default=list)
     title: Mapped[str] = mapped_column(String(100), default="Найти свой дом")
@@ -209,3 +214,8 @@ class KnowledgeChunk(Base):
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+# Register the separate recovery model for schema creation and Alembic discovery.
+from app.domain import project_models  # noqa: E402, F401
+from app.domain.recovery import RecoveryCredential  # noqa: E402, F401

@@ -47,15 +47,31 @@ class Catalog:
         """Atomic inventory batch. Missing != sold; old observations cannot overwrite newer ones."""
         if len(snapshot.items) > self.settings.max_snapshot_items:
             raise SourceError("catalog_limit")
+        if len(snapshot.projects) > self.settings.max_snapshot_items:
+            raise SourceError("catalog_limit")
         if any(c.provider_id != provider_id for c in snapshot.project_contexts):
             raise SourceError("context_provider_mismatch")
         now = utcnow()
+        source = self.providers.get(provider_id)
+        public_source = source is not None and (
+            getattr(source, "public_data", False)
+            or (self.settings.env == "demo" and getattr(source, "demo", False))
+        )
+        if snapshot.projects and not public_source:
+            raise SourceError("project_source_not_public")
         async with self.db.sessions.begin() as session:
             provider = await session.scalar(
                 select(Provider).where(Provider.id == provider_id).with_for_update()
             )
             if provider is None:
                 raise SourceError("unknown_provider")
+            from app.services.projects import (
+                project_projection_from_lots,
+                upsert_public_projects,
+            )
+
+            if public_source:
+                await upsert_public_projects(session, provider_id, snapshot.projects, snapshot.as_of)
             existing = {
                 r.external_id: r
                 for r in (
@@ -131,6 +147,8 @@ class Catalog:
                     )
                 accepted += 1
             await session.flush()
+            if public_source:
+                await project_projection_from_lots(session, provider_id, snapshot.items, snapshot.as_of)
             if updated_ids:
                 await session.execute(delete(Amenity).where(Amenity.apartment_id.in_(updated_ids)))
             session.add_all(replacement_amenities)

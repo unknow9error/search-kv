@@ -1,0 +1,17 @@
+[Unit]
+Description=Meken API and catalog worker
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/meken/current
+ExecStart=/usr/bin/docker compose --env-file /opt/meken/shared/.env -f compose.yml -f infra/compose.production.yml up -d --wait --wait-timeout 120
+ExecStop=/usr/bin/docker compose --env-file /opt/meken/shared/.env -f compose.yml -f infra/compose.production.yml stop
+TimeoutStartSec=180
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
