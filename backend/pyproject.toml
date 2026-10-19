@@ -9,7 +9,7 @@ description = "Streaming apartment discovery with evidence-grounded assistance"
 requires-python = ">=3.12,<3.15"
 dependencies = [
   "fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1", "pydantic-settings>=2.7,<3",
-  "sqlalchemy[asyncio]>=2.0.38,<2.1", "asyncpg>=0.30,<1", "aiosqlite>=0.21,<1",
+  "sqlalchemy[asyncio]>=2.0.38,<2.2", "asyncpg>=0.30,<1", "aiosqlite>=0.21,<1",
   "alembic>=1.14,<2", "httpx>=0.28,<1", "redis>=5.2,<7", "openai>=1.70,<3",
   "prometheus-client>=0.21,<1",
 ]
